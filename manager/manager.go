@@ -88,7 +88,7 @@ func (mgr *Manager) Close() {
 
 		for _, cc := range active {
 			_ = cc.connBuf.WritePacket(&packet.Disconnect{})
-			cc.connBuf.H.HandleDisconnect(cc.connBuf, "Manager closed")
+			cc.connBuf.BhDisconnect("Manager closed")
 			cc.markClosed()
 		}
 		close(mgr.closed)

@@ -33,15 +33,14 @@ func (cc *ClientConn) markClosed() {
 func (cc *ClientConn) handleConn() {
 	defer cc.markClosed()
 	serverConn := cc.connBuf
-	h := serverConn.H
+	serverConn.BhJoin()
 	
-	h.HandleJoin(serverConn)
 	for {
 		pk, err := serverConn.ReadPacket()
 		if err != nil {
 			var disc minecraft.DisconnectError
 			if errors.As(err, &disc) {
-				h.HandleDisconnect(serverConn, disc.Error())
+				serverConn.BhDisconnect(disc.Error())
 			}
 			return
 		}

@@ -12,7 +12,7 @@ type ConnHandler interface {
 type DefaultHandler struct{}
 
 func (h DefaultHandler) HandleDisconnect(cb *ConnBuf, reason string) {
-	fmt.Printf("Disconnected: %s\n", reason)
+	fmt.Printf("%s disconnected: %s\n", cb.IdentityData().DisplayName, reason)
 }
 
 func (h DefaultHandler) HandleJoin(cb *ConnBuf){
