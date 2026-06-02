@@ -9,7 +9,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 )
 
-func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (conn *ClientConn, err error) {
+func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err error) {
 	src := auth.RefreshTokenSource(c.conf.Token)
 	serverConn, err := minecraft.Dialer{
 		TokenSource:         src,
@@ -25,7 +25,8 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (conn *
 		serverConn.Close()
 		return
 	}
-	conn = &ClientConn{
+
+	conn := &ClientConn{
 		connBuf: &handler.ConnBuf{
 			Conn: serverConn,
 			H: h,
@@ -33,12 +34,14 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (conn *
 		client: c,
 		id: uuid.New(),
 	}
+
 	select {
 	case c.outgoingConn <- conn:
 	case <-c.managerClosed:
 		serverConn.Close()
-		return nil, errors.New("manager is closed")
+		return errors.New("manager is closed")
 	}
+	
 	return
 }
 

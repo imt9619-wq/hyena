@@ -57,6 +57,14 @@ func (mgr *Manager) Clients() map[int]*Client {
 	return indexToClient
 }
 
+func (mgr *Manager) ClientsByTag() map[string]*Client{
+	tagToClient := make(map[string]*Client, len(mgr.clients))
+	for _, client := range mgr.clients{
+		tagToClient[client.conf.TokenTag] = client
+	}
+	return tagToClient
+}
+
 func (mgr *Manager) closeWithContext(ctx context.Context) {
 	<-ctx.Done()
 	mgr.connsMu.Lock()

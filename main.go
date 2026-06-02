@@ -11,17 +11,16 @@ import (
 func main() {
 	mgr := manager.DefaultConfig().New(context.Background())
 
-	clt, ok := mgr.Clients()[0]
+	clt, ok := mgr.ClientsByTag()["ms_token_cache"]
 	if !ok {
-		fmt.Println("no clients found: add token JSON files to the tokens/ folder")
 		return
 	}
 
 	go func() {
-		if _, err := clt.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{}); err != nil {
+		err := clt.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{});
+		if err != nil {
 			fmt.Println(err)
 		}
-
 	}()
 
 	mgr.WaitTilClose()

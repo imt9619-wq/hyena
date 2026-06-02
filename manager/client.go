@@ -93,6 +93,7 @@ func (d *DefaultClientTokenIO) SaveClients(cConf ClientConfig) {
 		return
 	}
 	_ = os.WriteFile(clientJsonPath, b, 0o600)
+	fmt.Printf("%s token saved\n", cConf.TokenTag)
 }
 
 
