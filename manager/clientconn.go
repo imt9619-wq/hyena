@@ -32,13 +32,10 @@ func (cc *ClientConn) markClosed() {
 
 func (cc *ClientConn) handleConn() {
 	defer cc.markClosed()
-
 	serverConn := cc.connBuf
 	h := serverConn.H
-	if h == nil {
-		h = handler.DefaultHandler{}
-		serverConn.H = h
-	}
+	
+	h.HandleJoin(serverConn)
 	for {
 		pk, err := serverConn.ReadPacket()
 		if err != nil {

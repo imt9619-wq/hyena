@@ -7,13 +7,6 @@ type ConnBuf struct {
 	H ConnHandler
 }
 
-func NewConnBuf(conn *minecraft.Conn) *ConnBuf{
-	return &ConnBuf{
-		Conn: conn,
-		H: DefaultHandler{},
-	}
-}
-
 
 func (cb *ConnBuf) Handle(h ConnHandler){
 	cb.H = h

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/imt9619-wq/hyena/manager"
+	"github.com/imt9619-wq/hyena/manager/handler"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func main() {
 	}
 
 	go func() {
-		if _, err := clt.JoinServer("play.venitymc.com:19132"); err != nil {
+		if _, err := clt.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{}); err != nil {
 			fmt.Println(err)
 		}
 

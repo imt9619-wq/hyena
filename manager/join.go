@@ -9,7 +9,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 )
 
-func (c *Client) JoinServer(serverAddress string) (conn *ClientConn, err error) {
+func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (conn *ClientConn, err error) {
 	src := auth.RefreshTokenSource(c.conf.Token)
 	serverConn, err := minecraft.Dialer{
 		TokenSource:         src,
@@ -26,7 +26,10 @@ func (c *Client) JoinServer(serverAddress string) (conn *ClientConn, err error) 
 		return
 	}
 	conn = &ClientConn{
-		connBuf: handler.NewConnBuf(serverConn),
+		connBuf: &handler.ConnBuf{
+			Conn: serverConn,
+			H: h,
+		},
 		client: c,
 		id: uuid.New(),
 	}
