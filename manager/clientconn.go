@@ -19,7 +19,7 @@ type ClientConn struct {
 
 func (cc *ClientConn) markClosed() {
 	cc.closeOnce.Do(func() {
-		_ = cc.connBuf.Close()
+		cc.connBuf.Close()
 		
 		select {
 		case cc.client.closeConnChan <- cc.id:
@@ -34,7 +34,7 @@ func (cc *ClientConn) handleConn() {
 	defer cc.markClosed()
 	serverConn := cc.connBuf
 	serverConn.BhJoin()
-	
+
 	for {
 		pk, err := serverConn.ReadPacket()
 		if err != nil {
@@ -46,8 +46,12 @@ func (cc *ClientConn) handleConn() {
 		}
 
 		switch pk := pk.(type) {
+		case *packet.StartGame:
+			serverConn.BhStartGame(pk)
 		case *packet.NetworkStackLatency:
-			serverConn.BhNSL(pk)
+			serverConn.BhNetworkStackLatency(pk)
+		case *packet.MoveActorAbsolute:
+			serverConn.BhMoveActorAbsolute(pk)
 		default:
 		}
 	}

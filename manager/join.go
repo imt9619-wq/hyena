@@ -27,10 +27,7 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err er
 	}
 
 	conn := &ClientConn{
-		connBuf: &handler.ConnBuf{
-			Conn: serverConn,
-			H: h,
-		},
+		connBuf: handler.NewConnBuf(serverConn, h),
 		client: c,
 		id: uuid.New(),
 	}
@@ -41,7 +38,7 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err er
 		serverConn.Close()
 		return errors.New("manager is closed")
 	}
-	
+
 	return
 }
 
