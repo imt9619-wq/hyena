@@ -17,6 +17,8 @@ type ClientConn struct {
 	closeOnce sync.Once
 }
 
+
+
 func (cc *ClientConn) markClosed() {
 	cc.closeOnce.Do(func() {
 		cc.connBuf.Close()
@@ -46,8 +48,6 @@ func (cc *ClientConn) handleConn() {
 		}
 
 		switch pk := pk.(type) {
-		case *packet.StartGame:
-			serverConn.BhStartGame(pk)
 		case *packet.NetworkStackLatency:
 			serverConn.BhNetworkStackLatency(pk)
 		case *packet.MoveActorAbsolute:

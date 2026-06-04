@@ -1,7 +1,6 @@
 package handler
 
 import (
-	//"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -36,17 +35,6 @@ func (cb *ConnBuf) BhNetworkStackLatency(pk *packet.NetworkStackLatency){
 	ps.yaw = yaw
 }*/
 
-
-
-func (cb *ConnBuf) BhStartGame(pk *packet.StartGame){
-	cb.sc.entityRuntimeID = pk.EntityRuntimeID
-	ps := cb.sc.playerState
-	ps.Lock()
-	defer ps.Unlock()
-	ps.yaw = pk.Yaw
-	ps.playerPosition = pk.PlayerPosition
-	ps.pitch = pk.Pitch
-}
 
 func (cb *ConnBuf) BhJoin(){
 	cb.h.HandleJoin(cb)

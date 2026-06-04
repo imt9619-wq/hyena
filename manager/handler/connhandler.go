@@ -23,6 +23,7 @@ func NewConnBuf(conn *minecraft.Conn, h ConnHandler) *ConnBuf {
 		closed: make(chan struct{}),
 		closeOnce: &sync.Once{},
 	}
+	
 	cb.sc = NewsessionConf(conn)
 	cb.movements = newPlayerMovement(cb.sc)
 

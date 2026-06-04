@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/imt9619-wq/hyena/manager/handler"
+	"github.com/sandertv/gophertunnel/minecraft"
 	"golang.org/x/oauth2"
 )
 
@@ -97,4 +99,10 @@ func (d *DefaultClientTokenIO) SaveClients(cConf ClientConfig) {
 }
 
 
-
+func (c *Client) newClientConn(conn *minecraft.Conn, h handler.ConnHandler) *ClientConn{
+	return &ClientConn{
+		connBuf: handler.NewConnBuf(conn, h),
+		client: c,
+		id: uuid.New(),
+	}
+}

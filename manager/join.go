@@ -3,7 +3,6 @@ package manager
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/imt9619-wq/hyena/manager/handler"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/auth"
@@ -25,13 +24,8 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err er
 		serverConn.Close()
 		return
 	}
-
-	conn := &ClientConn{
-		connBuf: handler.NewConnBuf(serverConn, h),
-		client: c,
-		id: uuid.New(),
-	}
-
+	conn:= c.newClientConn(serverConn, h)
+	
 	select {
 	case c.outgoingConn <- conn:
 	case <-c.managerClosed:

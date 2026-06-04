@@ -41,11 +41,14 @@ func (sc *sessionConf) writePlayerAuthInput(){
 
 
 func NewsessionConf(conn *minecraft.Conn) *sessionConf {
-	return &sessionConf{
+	sc := &sessionConf{
 		conn: conn,
 		entityRuntimeID: 0,
-		playerState: newPlayerState(),
+		playerState: newPlayerState(conn),
 		flushedTick: &atomic.Int32{},
 		packetQueue: make([]packet.Packet, 0, 10),
 	}
+	sc.entityRuntimeID = conn.GameData().EntityRuntimeID
+	
+	return sc
 }
