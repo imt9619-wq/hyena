@@ -10,7 +10,6 @@ import (
 func newPlayerState() *playerState {
 	return &playerState{
 		RWMutex: &sync.RWMutex{},
-		force:          mgl32.Vec3{},
 		velocity:       mgl32.Vec3{},
 		onGround:       bool(true),
 		playerPosition: mgl32.Vec3{},
@@ -20,15 +19,11 @@ func newPlayerState() *playerState {
 	}
 }
 
-
-
-
 type playerState struct {
 	*sync.RWMutex
 	playerPosition mgl32.Vec3
 	pitch    	   float32
 	yaw            float32
-	force          mgl32.Vec3
 	velocity       mgl32.Vec3
 	onGround       bool
 	onReset        *atomic.Bool

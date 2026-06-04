@@ -28,7 +28,6 @@ func (sc *sessionConf) flush(){
 }
 
 
-
 func (sc *sessionConf) writePlayerAuthInput(){
 	ps := sc.playerState
 	sc.conn.WritePacket(&packet.PlayerAuthInput{

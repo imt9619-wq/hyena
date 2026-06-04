@@ -30,7 +30,13 @@ func NewConnBuf(conn *minecraft.Conn, h ConnHandler) *ConnBuf {
 	return cb
 }
 
+func (cb *ConnBuf) StartRunning(){
+	cb.movements.startRunning()
+}
 
+func (cb *ConnBuf) StopRunning(){
+	cb.movements.stopRunning()
+}
 
 func (cb *ConnBuf) Handle(h ConnHandler){
 	cb.h = h

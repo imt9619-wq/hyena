@@ -51,7 +51,7 @@ func (cc *ClientConn) handleConn() {
 		case *packet.NetworkStackLatency:
 			serverConn.BhNetworkStackLatency(pk)
 		case *packet.MoveActorAbsolute:
-			serverConn.BhMoveActorAbsolute(pk)
+			//serverConn.BhMoveActorAbsolute(pk)
 		default:
 		}
 	}

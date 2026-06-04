@@ -1,6 +1,9 @@
 package handler
 
-import "github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+import (
+	//"github.com/go-gl/mathgl/mgl32"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+)
 
 
 func (cb *ConnBuf) BhDisconnect(reason string){
@@ -17,13 +20,32 @@ func (cb *ConnBuf) BhNetworkStackLatency(pk *packet.NetworkStackLatency){
 	})
 }
 
-func (cb *ConnBuf) BhMoveActorAbsolute(pk *packet.MoveActorAbsolute){
-	
-}
+
+/*func (cb *ConnBuf) BhMoveActorAbsolute(pk *packet.MoveActorAbsolute){
+	if cb.sc.entityRuntimeID != pk.EntityRuntimeID{
+		return
+	}
+	yaw, pitch := rotationToPitchAndYaw(pk.Rotation)
+	ps := cb.sc.playerState
+	ps.Lock()
+	defer ps.Unlock()
+
+	ps.playerPosition = pk.Position
+	ps.velocity = mgl32.Vec3([]float32{0, 0, 0})
+	ps.pitch = pitch
+	ps.yaw = yaw
+}*/
+
 
 
 func (cb *ConnBuf) BhStartGame(pk *packet.StartGame){
 	cb.sc.entityRuntimeID = pk.EntityRuntimeID
+	ps := cb.sc.playerState
+	ps.Lock()
+	defer ps.Unlock()
+	ps.yaw = pk.Yaw
+	ps.playerPosition = pk.PlayerPosition
+	ps.pitch = pk.Pitch
 }
 
 func (cb *ConnBuf) BhJoin(){
