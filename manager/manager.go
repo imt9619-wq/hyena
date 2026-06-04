@@ -113,10 +113,10 @@ func (mgr *Manager) startTakingConn() {
 	for {
 		select{
 		case newcc := <- mgr.incomingConns:
-			go newcc.handleConn()
 			mgr.connsMu.Lock()
 			mgr.conns[newcc.id] = newcc
 			mgr.connsMu.Unlock()
+			go newcc.handleConn()
 			clientConf := newcc.client.conf
 
 			go func(conf *ClientConfig){

@@ -35,7 +35,7 @@ func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err er
 	select {
 	case c.outgoingConn <- conn:
 	case <-c.managerClosed:
-		serverConn.Close()
+		conn.markClosed()  
 		return errors.New("manager is closed")
 	}
 

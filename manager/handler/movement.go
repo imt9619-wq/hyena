@@ -2,7 +2,6 @@ package handler
 
 import (
 	"math"
-	"sync/atomic"
 
 	"github.com/go-gl/mathgl/mgl32"
 )
@@ -33,11 +32,10 @@ type playerMovement struct {
 func (pm *playerMovement) tick(){
 	defer pm.sc.playerState.Unlock()
 	pm.sc.playerState.Lock()
-	if !pm.sc.playerState.onReset.CompareAndSwap(true, false){
-		for aMove := range pm.currentAction{
-			aMove.doAction(pm.sc.playerState, pm.currentAction)
-		}
+	for aMove := range pm.currentAction{
+		aMove.doAction(pm.sc.playerState, pm.currentAction)
 	}
+	
 	pm.applyVelocityOnState()
 }
 
@@ -46,8 +44,6 @@ func (pm *playerMovement) tick(){
 // is changed then will get writen into playerAuthInput
 func (pm *playerMovement) applyVelocityOnState(){
 	ps := pm.sc.playerState
-	ps.RLock()
-	defer ps.RUnlock()
 	ps.playerPosition.Add(ps.velocity)
 }
 
@@ -76,8 +72,6 @@ func (dr doRun) doAction(ps *playerState, ca map[doMovement]struct{}){
 		jumpBoost = 0
 	}
 
-	ps.Lock()
-	defer ps.Unlock()
 	yawInradius := float64(ps.yaw) * (math.Pi / 180)
 
 	xVelocity := ps.velocity[0]
@@ -89,17 +83,29 @@ func (dr doRun) doAction(ps *playerState, ca map[doMovement]struct{}){
 	if !ps.onGround{
 		acceleration = 0
 	}
-	
-	ps.velocity[0] = momentum + acceleration * xVelocity / velocityValue + jumpBoost * float32(math.Sin(yawInradius))
-	ps.velocity[2] = momentum + acceleration * zVelocity / velocityValue + jumpBoost * float32(math.Cos(yawInradius))
+	sinD := float32(0)
+	cosD := float32(1)
+	if velocityValue > 0.003{
+		sinD = xVelocity / velocityValue
+		cosD = zVelocity / velocityValue
+	}
+	ps.velocity[0] = momentum + acceleration * sinD + jumpBoost * float32(math.Sin(yawInradius))
+	ps.velocity[2] = momentum + acceleration * cosD + jumpBoost * float32(math.Cos(yawInradius))
 }
 
 
 func rotationToPitchAndYaw(r mgl32.Vec3) (yaw, pitch float32){
 	xzRotateValue := math.Sqrt(math.Pow(float64(r[0]), 2) + math.Pow(float64(r[2]), 2))
 	rotateValue := math.Cbrt(math.Pow(xzRotateValue, 2) + math.Pow(float64(r[1]), 2))
-	pitch = float32(math.Acos(xzRotateValue/ rotateValue) * 180/math.Pi)
-	yaw = float32(math.Acos(float64(r[2])/xzRotateValue) * 180/math.Pi)
+
+	pitch, yaw = float32(18/math.Pi), float32(18/math.Pi)
+	if xzRotateValue > 0.003{
+		yaw = float32(math.Acos(float64(r[2])/xzRotateValue) * 180/math.Pi)	
+	}
+	if rotateValue > 0.003{
+		pitch = float32(math.Acos(xzRotateValue/ rotateValue) * 180/math.Pi)
+	}
+	
 	return
 }
 
@@ -109,15 +115,11 @@ func xzValue(v mgl32.Vec3) float32{
 
 type doJump struct{}
 func (dj doJump) doAction(ps *playerState, ca map[doMovement]struct{}){
-
 }
 
 
 
-func newPlayerMovement(sc *sessionConf) *playerMovement{
-	onGround := &atomic.Bool{}
-	onGround.Store(true)
-	
+func newPlayerMovement(sc *sessionConf) *playerMovement{	
 	return &playerMovement{
 		sc: sc,
 		currentAction: make(map[doMovement]struct{}, 3),

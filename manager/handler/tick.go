@@ -15,12 +15,12 @@ func (cb *ConnBuf) tick(){
 
 func (cb *ConnBuf) startTicking() {
 	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-
+	
 	go func() {
 		for {
 			select {
 			case <-cb.closed:
+				ticker.Stop()
 				return
 			case <-ticker.C:
 				cb.tick()
