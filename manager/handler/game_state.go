@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/imt9619-wq/hyena/manager/handler/blockmap"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -14,6 +15,7 @@ type gameState struct {
 	entityRuntimeID uint64
 	player          *playerState
 	flushedTick     *atomic.Int32
+	blockMap		*blockmap.BlockMap
 	packetQueue     []packet.Packet
 }
 
@@ -22,6 +24,7 @@ func newGameState(conn *minecraft.Conn) *gameState {
 		conn:        conn,
 		player:      newPlayerState(conn),
 		flushedTick: &atomic.Int32{},
+		blockMap: blockmap.NewBlockMap(conn),
 		packetQueue: make([]packet.Packet, 0, 10),
 	}
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID

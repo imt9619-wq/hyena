@@ -37,3 +37,7 @@ func (c *Connection) SyncActorPosition(pk *packet.MoveActorAbsolute) {
 	ps.pitch = pitch
 	ps.yaw = yaw
 }
+
+func (c *Connection) MapBlocks(pk *packet.LevelChunk){
+	
+}

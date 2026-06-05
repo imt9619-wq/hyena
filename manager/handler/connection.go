@@ -37,6 +37,14 @@ func (c *Connection) StopRunning() {
 	c.movement.stopRunning()
 }
 
+func (c *Connection) StartJumping() {
+	c.movement.startJumping()
+}
+
+func (c *Connection) StopJumping() {
+	c.movement.stopJumping()
+}
+
 func (c *Connection) SetHandler(h Handler) {
 	c.handler = h
 }

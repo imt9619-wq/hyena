@@ -6,11 +6,6 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-const (
-	Gravity = -0.08 // blocks per tick^2
-	Drag    = 0.98
-)
-
 type movementAction interface {
 	apply(*playerState, map[movementAction]struct{})
 }
@@ -35,9 +30,20 @@ func (m *movement) tick() {
 		action.apply(m.state.player, m.activeActions)
 	}
 	m.applyVelocity()
+	//m.checkCollision()
+}
+
+func (m *movement) checkCollision(){
+
 }
 
 func (m *movement) applyVelocity() {
+	gravity := float32(-0.08)
+	drag := float32(0.98)
+	ps := m.state.player
+	if !ps.onGround{
+		ps.velocity[1] = (ps.velocity[1] + gravity) * drag
+	}
 	m.state.player.position.Add(m.state.player.velocity)
 }
 
@@ -47,6 +53,14 @@ func (m *movement) startRunning() {
 
 func (m *movement) stopRunning() {
 	delete(m.activeActions, runAction{})
+}
+
+func (m *movement) startJumping() {
+	m.activeActions[jumpAction{}] = struct{}{}
+}
+
+func (m *movement) stopJumping() {
+	delete(m.activeActions, jumpAction{})
 }
 
 type runAction struct{}
@@ -84,7 +98,12 @@ func (runAction) apply(ps *playerState, active map[movementAction]struct{}) {
 
 type jumpAction struct{}
 
-func (jumpAction) apply(ps *playerState, active map[movementAction]struct{}) {}
+func (jumpAction) apply(ps *playerState, active map[movementAction]struct{}) {
+	jumpSpeed := float32(0.42)
+	if ps.onGround {
+		ps.position[1] = jumpSpeed
+	}
+}
 
 func rotationToPitchAndYaw(r mgl32.Vec3) (yaw, pitch float32) {
 	xz := math.Sqrt(math.Pow(float64(r[0]), 2) + math.Pow(float64(r[2]), 2))
