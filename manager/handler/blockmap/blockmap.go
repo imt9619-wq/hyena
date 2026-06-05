@@ -1,6 +1,7 @@
 package blockmap
 
 import (
+	"fmt"
 	"sync"
 
 	_ "github.com/df-mc/dragonfly/server/block"
@@ -29,6 +30,23 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	return bm
 }
 
+func propertiesFromItem(item protocol.ItemEntry) map[string]any {
+    if item.Data == nil {
+        return nil
+    }
+    
+	data := item.Data
+    for key, value := range data{
+		switch value.(type){
+		case bool, uint8, int32, string:
+		default:
+			delete(data, key)
+		}
+	}
+	fmt.Printf("%v\n", data)
+    return data
+}
+
 func (bm *BlockMap) registerItems(items []protocol.ItemEntry) {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
@@ -36,7 +54,7 @@ func (bm *BlockMap) registerItems(items []protocol.ItemEntry) {
 	for _, item := range items {
 		bm.runtimeIDToName[item.RuntimeID] = item.Name
 
-		block, ok := world.BlockByName(item.Name, nil)
+		block, ok := world.BlockByName(item.Name, propertiesFromItem(item))
 		if ok {
 			bm.runtimeIDToModel[item.RuntimeID] = block.Model()
 			continue
