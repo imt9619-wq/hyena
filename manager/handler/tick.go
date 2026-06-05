@@ -1,31 +1,25 @@
 package handler
 
-import (
-	"time"
-)
+import "time"
 
-
-
-func (cb *ConnBuf) tick(){
-	defer cb.sc.flush()
-	cb.movements.tick()
+func (c *Connection) tick() {
+	defer c.state.flush()
+	c.movement.tick()
 }
 
-
-
-func (cb *ConnBuf) startTicking() {
+func (c *Connection) startTicking() {
 	ticker := time.NewTicker(50 * time.Millisecond)
-	
+
 	go func() {
 		for {
 			select {
-			case <-cb.closed:
+			case <-c.closed:
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				cb.tick()
+				c.tick()
 			}
 		}
 	}()
-	cb.tick()
+	c.tick()
 }

@@ -1,0 +1,46 @@
+package handler
+
+import (
+	"sync/atomic"
+
+	"github.com/go-gl/mathgl/mgl32"
+	"github.com/sandertv/gophertunnel/minecraft"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+)
+
+// gameState holds per-session Minecraft world data used by movement and packet output.
+type gameState struct {
+	conn            *minecraft.Conn
+	entityRuntimeID uint64
+	player          *playerState
+	flushedTick     *atomic.Int32
+	packetQueue     []packet.Packet
+}
+
+func newGameState(conn *minecraft.Conn) *gameState {
+	gs := &gameState{
+		conn:        conn,
+		player:      newPlayerState(conn),
+		flushedTick: &atomic.Int32{},
+		packetQueue: make([]packet.Packet, 0, 10),
+	}
+	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
+	return gs
+}
+
+func (gs *gameState) flush() {
+	defer gs.player.RUnlock()
+	defer gs.flushedTick.Add(1)
+	gs.player.RLock()
+	// gs.writePlayerAuthInput()
+}
+
+func (gs *gameState) writePlayerAuthInput() {
+	ps := gs.player
+	gs.conn.WritePacket(&packet.PlayerAuthInput{
+		Pitch:      ps.pitch,
+		Yaw:        ps.yaw,
+		Position:   ps.position,
+		MoveVector: mgl32.Vec2{ps.velocity[0], ps.velocity[2]},
+	})
+}

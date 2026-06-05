@@ -1,14 +1,11 @@
 package manager
 
 type Config struct {
-	CachedClients ClientTokenIO
+	TokenStore TokenStore
 }
 
-
 func DefaultConfig() Config {
-	c := Config{}
-	c.CachedClients = &DefaultClientTokenIO{
-		ClientFolder: "tokens",
+	return Config{
+		TokenStore: &FileTokenStore{Dir: "tokens"},
 	}
-	return c
 }

@@ -11,14 +11,14 @@ import (
 func main() {
 	mgr := manager.DefaultConfig().New(context.Background())
 
-	clt, ok := mgr.ClientsByTag()["ms_token_cache"]
+	acc, ok := mgr.AccountsByTag()["ms_token_cache"]
 	if !ok {
+		fmt.Println("no account found: add token JSON files to the tokens/ folder")
 		return
 	}
 
 	go func() {
-		err := clt.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{});
-		if err != nil {
+		if err := acc.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{}); err != nil {
 			fmt.Println(err)
 		}
 	}()

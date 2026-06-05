@@ -12,129 +12,129 @@ import (
 )
 
 type Manager struct {
-	conf          *Config
-	clients       []*Client
-	clientConfMu  *sync.Mutex
-	connsMu       sync.Mutex
-	conns         map[uuid.UUID]*ClientConn
-	incomingConns chan *ClientConn
-	closingConns chan uuid.UUID
-	closed        chan struct{}
-	closeOnce     sync.Once
+	config       *Config
+	accounts     []*Account
+	accountConfMu *sync.Mutex
+	sessionsMu   sync.Mutex
+	sessions     map[uuid.UUID]*Session
+	sessionQueue chan *Session
+	closedNotify chan uuid.UUID
+	closed       chan struct{}
+	closeOnce    sync.Once
 }
 
 func (c Config) New(ctx context.Context) *Manager {
 	m := &Manager{
-		conf:          &c,
-		clientConfMu:  &sync.Mutex{},
+		config:        &c,
+		accountConfMu: &sync.Mutex{},
 		closed:        make(chan struct{}),
-		conns:         make(map[uuid.UUID]*ClientConn),
-		incomingConns: make(chan *ClientConn),
-		closingConns: make(chan uuid.UUID, 64),
+		sessions:      make(map[uuid.UUID]*Session),
+		sessionQueue:  make(chan *Session),
+		closedNotify:  make(chan uuid.UUID, 64),
 	}
 
-	m.clientConfMu.Lock()
-	clientConfs := c.CachedClients.FetchClients()
-	m.clientConfMu.Unlock()
+	m.accountConfMu.Lock()
+	accountConfigs := c.TokenStore.FetchAccounts()
+	m.accountConfMu.Unlock()
 
-	m.clients = make([]*Client, 0, len(clientConfs))
-	for _, clientConf := range clientConfs {
-		m.clients = append(m.clients, clientConf.new(m.incomingConns, m.closingConns, m.closed))
+	m.accounts = make([]*Account, 0, len(accountConfigs))
+	for _, cfg := range accountConfigs {
+		m.accounts = append(m.accounts, cfg.newAccount(m.sessionQueue, m.closedNotify, m.closed))
 	}
 
 	if ctx != nil {
-		go m.closeWithContext(ctx)
+		go m.closeOnContext(ctx)
 	}
-	go m.startTakingConn()
+	go m.runSessionLoop()
 	return m
 }
 
-func (mgr *Manager) Clients() map[int]*Client {
-	indexToClient := make(map[int]*Client, len(mgr.clients))
-	for index, client := range mgr.clients {
-		indexToClient[index] = client
+func (m *Manager) Accounts() map[int]*Account {
+	out := make(map[int]*Account, len(m.accounts))
+	for i, acc := range m.accounts {
+		out[i] = acc
 	}
-	return indexToClient
+	return out
 }
 
-func (mgr *Manager) ClientsByTag() map[string]*Client{
-	tagToClient := make(map[string]*Client, len(mgr.clients))
-	for _, client := range mgr.clients{
-		tagToClient[client.conf.TokenTag] = client
+func (m *Manager) AccountsByTag() map[string]*Account {
+	out := make(map[string]*Account, len(m.accounts))
+	for _, acc := range m.accounts {
+		out[acc.config.Tag] = acc
 	}
-	return tagToClient
+	return out
 }
 
-func (mgr *Manager) closeWithContext(ctx context.Context) {
+func (m *Manager) closeOnContext(ctx context.Context) {
 	<-ctx.Done()
-	mgr.connsMu.Lock()
-	empty := len(mgr.conns) == 0
-	mgr.connsMu.Unlock()
+	m.sessionsMu.Lock()
+	empty := len(m.sessions) == 0
+	m.sessionsMu.Unlock()
 	if empty {
-		mgr.Close()
+		m.Close()
 	}
 }
 
-func (mgr *Manager) closeManagerOnEnd() {
+func (m *Manager) listenForSignals() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		defer signal.Stop(c)
 		<-c
-		mgr.Close()
+		m.Close()
 	}()
 }
 
-func (mgr *Manager) Close() {
-	mgr.closeOnce.Do(func() {
-		mgr.connsMu.Lock()
-		active := make([]*ClientConn, 0, len(mgr.conns))
-		for _, cc := range mgr.conns {
-			active = append(active, cc)
+func (m *Manager) Close() {
+	m.closeOnce.Do(func() {
+		m.sessionsMu.Lock()
+		active := make([]*Session, 0, len(m.sessions))
+		for _, s := range m.sessions {
+			active = append(active, s)
 		}
-		mgr.connsMu.Unlock()
+		m.sessionsMu.Unlock()
 
-		for _, cc := range active {
-			_ = cc.connBuf.WritePacket(&packet.Disconnect{})
-			cc.connBuf.BhDisconnect("Manager closed")
-			cc.markClosed()
+		for _, s := range active {
+			_ = s.connection.WritePacket(&packet.Disconnect{})
+			s.connection.NotifyDisconnect("Manager closed")
+			s.markClosed()
 		}
-		close(mgr.closed)
+		close(m.closed)
 	})
 }
 
-func (mgr *Manager) WaitTilClose() {
-	mgr.closeManagerOnEnd()
-	<-mgr.closed
+func (m *Manager) WaitTilClose() {
+	m.listenForSignals()
+	<-m.closed
 }
 
-
-func (mgr *Manager) startTakingConn() {
+func (m *Manager) runSessionLoop() {
 	for {
-		select{
-		case newcc := <- mgr.incomingConns:
-			mgr.connsMu.Lock()
-			mgr.conns[newcc.id] = newcc
-			mgr.connsMu.Unlock()
-			go newcc.handleConn()
-			clientConf := newcc.client.conf
+		select {
+		case session := <-m.sessionQueue:
+			m.sessionsMu.Lock()
+			m.sessions[session.id] = session
+			m.sessionsMu.Unlock()
 
-			go func(conf *ClientConfig){
-				mgr.clientConfMu.Lock()
-				mgr.conf.CachedClients.SaveClients(*conf)
-				mgr.clientConfMu.Unlock()
-			}(clientConf)
+			go session.run()
 
-		case closeccId := <- mgr.closingConns:
-			mgr.connsMu.Lock()
-			delete(mgr.conns, closeccId)
-			empty := len(mgr.conns) == 0
-			mgr.connsMu.Unlock()
+			accountConfig := session.account.config
+			go func(cfg *AccountConfig) {
+				m.accountConfMu.Lock()
+				m.config.TokenStore.SaveAccount(*cfg)
+				m.accountConfMu.Unlock()
+			}(accountConfig)
+
+		case sessionID := <-m.closedNotify:
+			m.sessionsMu.Lock()
+			delete(m.sessions, sessionID)
+			empty := len(m.sessions) == 0
+			m.sessionsMu.Unlock()
 			if empty {
-				mgr.Close()
+				m.Close()
 			}
-			
-		case <-mgr.closed: 
+
+		case <-m.closed:
 			return
 		}
 	}

@@ -1,20 +1,19 @@
 package handler
 
-import (
-	"fmt"
-)
+import "fmt"
 
-type ConnHandler interface {
-	HandleDisconnect(*ConnBuf, string)
-	HandleJoin(*ConnBuf)
+// Handler receives connection lifecycle events for a server session.
+type Handler interface {
+	OnDisconnect(*Connection, string)
+	OnJoin(*Connection)
 }
 
 type DefaultHandler struct{}
 
-func (h DefaultHandler) HandleDisconnect(cb *ConnBuf, reason string) {
-	fmt.Printf("%s disconnected: %s\n", cb.IdentityData().DisplayName, reason)
+func (h DefaultHandler) OnDisconnect(c *Connection, reason string) {
+	fmt.Printf("%s disconnected: %s\n", c.IdentityData().DisplayName, reason)
 }
 
-func (h DefaultHandler) HandleJoin(cb *ConnBuf){
-	fmt.Printf("%s has joined the server: %s\n", cb.IdentityData().DisplayName, cb.RemoteAddr())
+func (h DefaultHandler) OnJoin(c *Connection) {
+	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 }

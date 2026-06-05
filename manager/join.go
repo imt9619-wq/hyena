@@ -8,32 +8,29 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 )
 
-func (c *Client) JoinServer(serverAddress string, h handler.ConnHandler) (err error) {
-	src := auth.RefreshTokenSource(c.conf.Token)
+func (a *Account) JoinServer(serverAddress string, h handler.Handler) error {
+	src := auth.RefreshTokenSource(a.config.Token)
 	serverConn, err := minecraft.Dialer{
-		TokenSource:         src,
-		EnableClientCache:   false,
+		TokenSource:       src,
+		EnableClientCache: false,
 	}.Dial("raknet", serverAddress)
+	if err != nil {
+		return err
+	}
 
-	if err != nil {
-		return
-	}
-	
-	err = serverConn.DoSpawn()
-	if err != nil {
+	if err = serverConn.DoSpawn(); err != nil {
 		serverConn.Close()
-		return
+		return err
 	}
-	conn:= c.newClientConn(serverConn, h)
-	
+
+	session := a.newSession(serverConn, h)
+
 	select {
-	case c.outgoingConn <- conn:
-	case <-c.managerClosed:
-		conn.markClosed()  
+	case a.sessionQueue <- session:
+	case <-a.managerClosed:
+		session.markClosed()
 		return errors.New("manager is closed")
 	}
 
-	return
+	return nil
 }
-
-
