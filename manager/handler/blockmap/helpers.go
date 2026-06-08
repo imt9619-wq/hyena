@@ -14,9 +14,17 @@ func ProtocolPosToMgl32Vec3(protocolPos protocol.BlockPos) mgl32.Vec3 {
 }
 
 func Mgl32ToWorldChunkPos(pos mgl32.Vec3) world.ChunkPos {
-	chunkPosX := int32(math.Floor(float64(pos[0] / 16)))
-	chunkPosZ := int32(math.Floor(float64(pos[2] / 16)))
+	chunkPosX := ShiftBackFourBits(int32(pos[0]))
+	chunkPosZ := ShiftBackFourBits(int32(pos[2]))
 	return world.ChunkPos([]int32{chunkPosX, chunkPosZ})
+}
+
+func Float32Floor(x float32) float64 {
+	return math.Floor(float64(x))
+}
+
+func ShiftBackFourBits(x int32) int32 {
+	return x >> 4
 }
 
 func ProtocolPosToWorldPos(pPos protocol.ChunkPos) world.ChunkPos {
@@ -41,4 +49,8 @@ func isRenderedChunk(chunk world.ChunkPos, seCornerChunk world.ChunkPos, nwCorne
 
 func ProtocolPosToWorldChunkPos(protocolPos protocol.BlockPos) world.ChunkPos {
 	return Mgl32ToWorldChunkPos(ProtocolPosToMgl32Vec3(protocolPos))
+}
+
+func LastFourBit(x int32) int32 {
+	return x & 0x0F
 }

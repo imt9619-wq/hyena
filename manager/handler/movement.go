@@ -4,7 +4,9 @@ import (
 	"math"
 	"sync/atomic"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 type movement struct {
@@ -46,9 +48,19 @@ func (m *movement) tick() {
 	// m.checkCollision()
 }
 
+// checkCollision will get all new BBox the player has position into, 
+// we assume there is no collision in last tick so we can check less blocks BBox, 
+// we will check what block pos is touched by a 3d object where it is shaped by mapping 
+// all the points the pBBox has intercepted when moving from the last tick position to the 
+// current tick position, it can have 0 points(if no move) to 14 points. if a collision happens 
+// on a given axis of the player BBox, the speed that is toward that axis will be reset to 0, 
+// and the player position will be set the point where the player BBox collied axis is the 
+// touching the collied block axis
 func (m *movement) checkCollision(){
-
+	pheight := float64(1.8)
+	pwidth := float64(0.6)
 }
+
 
 func istrue(b *atomic.Bool) bool {
 	return b.Load()

@@ -77,8 +77,35 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 	if !ok{
 		return
 	}
-	x := uint8(pos[0]-chunkPos[0]*16)
+	x := uint8(LastFourBit(pos.X()))
 	y := int16(pos[1])
-	z := uint8(pos[2]-chunkPos[1]*16)
+	z := uint8(LastFourBit(pos.Z()))
 	chunk.SetBlock(x, y, z, layer, block)
+}
+
+func (b *BlockMap) GetBlockModel(pos mgl32.Vec3, layer uint8) (model world.BlockModel, exist bool) {
+	model = nil
+	exist = false
+	if layer != 1{
+		return 
+	}
+
+	chunkPos:= Mgl32ToWorldChunkPos(pos)
+	chunk, ok := b.chunkMap[chunkPos]
+	chunkRange := chunk.Range()
+	if !(ok && chunkRange.Max() >= int(Float32Floor(pos[1])) && chunkRange.Min() <= int(Float32Floor(pos[1]))) {
+		return
+	}
+
+	subChunk := chunk.SubChunk(chunk.SubIndex(int16(pos.Y())))
+	x := byte(LastFourBit(int32(pos[0])))
+	y := byte(LastFourBit(int32(pos[1])))
+	z := byte(LastFourBit(int32(pos[2])))
+	rid := subChunk.Block(x, y, z, layer)
+
+	block, ok := world.BlockByRuntimeID(rid)
+	if !ok{
+		return
+	}
+	return block.Model(), true
 }
