@@ -26,6 +26,7 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 	c.state = newGameState(conn)
 	c.movement = newMovement(c.state)
 	c.startTicking()
+	c.state.startRunningQueue(c)
 	return c
 }
 
@@ -51,6 +52,10 @@ func (c *Connection) SetHandler(h Handler) {
 
 func (c *Connection) Handler() Handler {
 	return c.handler
+}
+
+func (c *Connection) endTick(){
+	
 }
 
 func (c *Connection) Close() {

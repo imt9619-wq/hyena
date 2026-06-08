@@ -50,7 +50,19 @@ func (s *Session) run() {
 		case *packet.NetworkStackLatency:
 			conn.ReplyNetworkStackLatency(pk)
 		case *packet.MoveActorAbsolute:
-			conn.SyncActorPosition(pk)
+			conn.ReplyMoveActorAbsolute(pk)
+		case *packet.LevelChunk:
+			conn.ReplyLevelChunk(pk)
+		case *packet.NetworkChunkPublisherUpdate:
+			conn.ReplyNetworkChunkPublisherUpdate(pk)
+		case *packet.ChunkRadiusUpdated:
+			conn.ReplyChunkRadiusUpdated(pk)
+		case *packet.UpdateAttributes:
+			conn.ReplyUpdateAttributes(pk)
+		case *packet.SetActorMotion:
+			conn.ReplySetActorMotion(pk)
+		case *packet.UpdateBlock:
+			conn.ReplyUpdateBlock(pk)
 		default:
 		}
 	}

@@ -1,102 +1,84 @@
 package blockmap
 
 import (
-	"fmt"
-	"sync"
-
 	_ "github.com/df-mc/dragonfly/server/block"
-	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
+	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// BlockMap maps server network runtime IDs (from StartGame + chunk palettes) to
-// block names and Dragonfly BlockModels used for collision (BBox / FaceSolid).
+// BlockMap is a map that hold *chunk.Chunk, the chunk inside the map
+// should only be the chunk inside a player render distance, BlockMap
+// is not safe to be used by mutiple gorotuines
 type BlockMap struct {
-	mu sync.RWMutex
-
-	runtimeIDToName  map[int16]string
-	runtimeIDToModel map[int16]world.BlockModel
+	chunkMap map[world.ChunkPos]*chunk.Chunk
+	chunkRadius int32
+	chunkCentre world.ChunkPos
 }
 
 func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	bm := &BlockMap{
-		runtimeIDToName:  make(map[int16]string, 1800),
-		runtimeIDToModel: make(map[int16]world.BlockModel, 1200),
+		chunkRadius: 15,
 	}
-	// Build synchronously so the map is ready before LevelChunk packets arrive.
-	bm.registerItems(conn.GameData().Items)
+	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, radiusToChunkCount(bm.chunkRadius))
 	return bm
 }
 
-func propertiesFromItem(item protocol.ItemEntry) map[string]any {
-    if item.Data == nil {
-        return nil
-    }
-    
-	data := item.Data
-    for key, value := range data{
-		switch value.(type){
-		case bool, uint8, int32, string:
-		default:
-			delete(data, key)
+// When a player moved to a new chunk, chunk outside of their render 
+// chunk distance will be deleted, when they get back in to the deleted 
+// chunk(unloaded chunk), a levelchunk packet of that chunk should be 
+// received to load back the chunk
+func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
+	chunkCentre := Mgl32ToWorldChunkPos(pos)
+	if b.chunkCentre == chunkCentre{
+		return
+	}
+	b.chunkCentre = chunkCentre
+	b.RefreshMapWithRenderDistance() 
+}
+
+func (b *BlockMap) RefreshMapWithRenderDistance() {
+	seCor, nwCor := getRenderedChunkFlame(b.chunkCentre, b.chunkRadius)
+	for chunk := range b.chunkMap{
+		if !isRenderedChunk(chunk, seCor, nwCor) {
+			delete(b.chunkMap, chunk)
 		}
 	}
-	fmt.Printf("%v\n", data)
-    return data
 }
 
-func (bm *BlockMap) registerItems(items []protocol.ItemEntry) {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
+func (b *BlockMap) UpdateChunkRadius(r int32) {
+	b.chunkRadius = r
+}
 
-	for _, item := range items {
-		bm.runtimeIDToName[item.RuntimeID] = item.Name
-
-		block, ok := world.BlockByName(item.Name, propertiesFromItem(item))
-		if ok {
-			bm.runtimeIDToModel[item.RuntimeID] = block.Model()
-			continue
-		}
-		// Block exists on server but has no Dragonfly implementation — treat as full cube.
-		bm.runtimeIDToModel[item.RuntimeID] = solidModel{}
+func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
+	airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
+	dim, _ := world.DimensionByID(int(pk.Dimension))
+	chunk, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), dim.Range())
+	if err != nil{
+		return
 	}
+	b.insertChunk(ProtocolPosToWorldPos(pk.Position), chunk)
 }
 
-// Name returns the block identifier for a server runtime ID.
-func (bm *BlockMap) Name(runtimeID int16) (string, bool) {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
-	name, ok := bm.runtimeIDToName[runtimeID]
-	return name, ok
-}
-
-// Model returns the collision model for a server runtime ID.
-// Use this after reading a uint32 from a decoded chunk (cast to int16).
-func (bm *BlockMap) Model(runtimeID int16) (world.BlockModel, bool) {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
-	model, ok := bm.runtimeIDToModel[runtimeID]
-	return model, ok
-}
-
-// ModelAt returns the model for a runtime ID read from chunk data.
-func (bm *BlockMap) ModelAt(runtimeID uint32) world.BlockModel {
-	model, ok := bm.Model(int16(runtimeID))
-	if ok {
-		return model
+func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
+	seCor, nwCor := getRenderedChunkFlame(b.chunkCentre, b.chunkRadius)
+	if !isRenderedChunk(pos, seCor, nwCor) {
+		return
 	}
-	return solidModel{}
+	b.chunkMap[pos] = chunk
 }
 
-// solidModel is a 1x1x1 cube fallback for unknown or unimplemented blocks.
-type solidModel struct{}
-
-func (solidModel) BBox(cube.Pos, world.BlockSource) []cube.BBox {
-	return []cube.BBox{cube.Box(0, 0, 0, 1, 1, 1)}
-}
-
-func (solidModel) FaceSolid(cube.Pos, cube.Face, world.BlockSource) bool {
-	return true
+func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
+	chunkPos := ProtocolPosToWorldChunkPos(pos)
+	chunk, ok := b.chunkMap[chunkPos]
+	if !ok{
+		return
+	}
+	x := uint8(pos[0]-chunkPos[0]*16)
+	y := int16(pos[1])
+	z := uint8(pos[2]-chunkPos[1]*16)
+	chunk.SetBlock(x, y, z, layer, block)
 }

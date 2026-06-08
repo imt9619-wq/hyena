@@ -2,39 +2,61 @@ package handler
 
 import (
 	"math"
+	"sync/atomic"
 
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-type movementAction interface {
-	apply(*playerState, map[movementAction]struct{})
-}
-
 type movement struct {
 	state          *gameState
-	activeActions  map[movementAction]struct{}
+	isrunning *atomic.Bool
+	isjumping *atomic.Bool
+	isleftwalk *atomic.Bool
+	isrightwalk *atomic.Bool
+	isbackwalk *atomic.Bool
+	iswalk *atomic.Bool
+	inputFlags map[int]struct{}
+	lastTickInputFlags map[int]struct{}
 }
 
 func newMovement(state *gameState) *movement {
-	return &movement{
+	m := &movement{
 		state:         state,
-		activeActions: make(map[movementAction]struct{}, 3),
+		isrunning: &atomic.Bool{},
+		isjumping: &atomic.Bool{},
+		isleftwalk: &atomic.Bool{},
+		isrightwalk: &atomic.Bool{},
+		isbackwalk: &atomic.Bool{},
+		iswalk: &atomic.Bool{},
+		inputFlags: make(map[int]struct{}, 5),
+		lastTickInputFlags: make(map[int]struct{}, 5),
 	}
+	m.isrunning.Store(false)
+	m.isjumping.Store(false)
+	m.isleftwalk.Store(false)
+	m.isrightwalk.Store(false)
+	m.isbackwalk.Store(false)
+	m.iswalk.Store(false)
+	return m
 }
 
 func (m *movement) tick() {
-	defer m.state.player.Unlock()
-	m.state.player.Lock()
-
-	for action := range m.activeActions {
-		action.apply(m.state.player, m.activeActions)
-	}
+	m.doMotions()
 	m.applyVelocity()
-	//m.checkCollision()
+	// m.checkCollision()
 }
 
 func (m *movement) checkCollision(){
 
+}
+
+func istrue(b *atomic.Bool) bool {
+	return b.Load()
+}
+
+func (m *movement) doMotions(){
+	if istrue(m.isrunning) {m.run()}
+	if istrue(m.isjumping) {m.jump()}
 }
 
 func (m *movement) applyVelocity() {
@@ -48,36 +70,33 @@ func (m *movement) applyVelocity() {
 }
 
 func (m *movement) startRunning() {
-	m.activeActions[runAction{}] = struct{}{}
+	m.isrunning.Store(true)
 }
 
 func (m *movement) stopRunning() {
-	delete(m.activeActions, runAction{})
+	m.isrunning.Store(false)
 }
 
 func (m *movement) startJumping() {
-	m.activeActions[jumpAction{}] = struct{}{}
+	m.isjumping.Store(true)
 }
 
 func (m *movement) stopJumping() {
-	delete(m.activeActions, jumpAction{})
+	m.isjumping.Store(false)
 }
 
-type runAction struct{}
-
-func (runAction) apply(ps *playerState, active map[movementAction]struct{}) {
+func (m *movement) run() {
 	slipperiness := float32(0.6)
 	movementMult := float32(1.3)
 	effectsMult := float32(1)
+	ps := m.state.player
 
 	jumpBoost := float32(0.2)
-	if _, jumping := active[jumpAction{}]; !jumping {
+	if !istrue(m.isjumping) {
 		jumpBoost = 0
 	}
 
 	yawRad := float64(ps.yaw) * (math.Pi / 180)
-	xVel := ps.velocity[0]
-	zVel := ps.velocity[2]
 	speed := xzSpeed(ps.velocity)
 
 	momentum := speed * slipperiness * 0.91
@@ -86,20 +105,15 @@ func (runAction) apply(ps *playerState, active map[movementAction]struct{}) {
 		acceleration = 0
 	}
 
-	sinD := float32(0)
-	cosD := float32(1)
-	if speed > 0.003 {
-		sinD = xVel / speed
-		cosD = zVel / speed
-	}
+	sinD, cosD := ps.sinNCosOfSpeed()
 	ps.velocity[0] = momentum + acceleration*sinD + jumpBoost*float32(math.Sin(yawRad))
 	ps.velocity[2] = momentum + acceleration*cosD + jumpBoost*float32(math.Cos(yawRad))
 }
 
-type jumpAction struct{}
-
-func (jumpAction) apply(ps *playerState, active map[movementAction]struct{}) {
+func (m *movement) jump() {
+	ps := m.state.player
 	jumpSpeed := float32(0.42)
+	
 	if ps.onGround {
 		ps.position[1] = jumpSpeed
 	}

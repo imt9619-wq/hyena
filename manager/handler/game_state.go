@@ -10,13 +10,14 @@ import (
 )
 
 // gameState holds per-session Minecraft world data used by movement and packet output.
+// Qx is only used for calling blockmap methods currently
 type gameState struct {
 	conn            *minecraft.Conn
 	entityRuntimeID uint64
 	player          *playerState
 	flushedTick     *atomic.Int32
 	blockMap		*blockmap.BlockMap
-	packetQueue     []packet.Packet
+	queue           chan *queueTransition
 }
 
 func newGameState(conn *minecraft.Conn) *gameState {
@@ -25,16 +26,14 @@ func newGameState(conn *minecraft.Conn) *gameState {
 		player:      newPlayerState(conn),
 		flushedTick: &atomic.Int32{},
 		blockMap: blockmap.NewBlockMap(conn),
-		packetQueue: make([]packet.Packet, 0, 10),
+		queue: make(chan *queueTransition, 128),
 	}
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	return gs
 }
 
 func (gs *gameState) flush() {
-	defer gs.player.RUnlock()
 	defer gs.flushedTick.Add(1)
-	gs.player.RLock()
 	// gs.writePlayerAuthInput()
 }
 

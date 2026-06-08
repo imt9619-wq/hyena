@@ -3,6 +3,11 @@ package handler
 import "time"
 
 func (c *Connection) tick() {
+	defer c.endTick()
+	<-c.state.Exec(c.gameStateTick)
+}
+
+func (c *Connection) gameStateTick(q *Qx) {
 	defer c.state.flush()
 	c.movement.tick()
 }
@@ -21,5 +26,4 @@ func (c *Connection) startTicking() {
 			}
 		}
 	}()
-	c.tick()
 }
