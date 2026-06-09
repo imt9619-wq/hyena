@@ -106,11 +106,8 @@ func (b *BlockMap) GetBlockModel(pos mgl32.Vec3, layer uint8) (model world.Block
 	localZ := uint8(pos[2]) & 0xF
 	worldY := int16(pos[1])
 
-	rid := c.Block(localX, worldY, localZ, layer) 
+	rid := c.Block(localX, worldY, localZ, layer)
 
-	block, ok := world.BlockByRuntimeID(rid)
-	if !ok{
-		return
-	}
-	return block.Model(), true
+	model, exist = b.palette.model(int16(rid))
+	return
 }
