@@ -68,7 +68,38 @@ func (m *movement) checkCollision(){
 								float64(pPosBeforeTick[1]+pheight), 
 								float64(pPosBeforeTick[2]+pwidth),
 							)
-	_ = m.intersection(pBBoxBeforeTick)
+	nearByBlocks := m.intersection(pBBoxBeforeTick)
+	minDistance := float64(ps.velocity.Len()+1.8) // 1.8 is the square root of 3
+	pFinalVelocity := ps.velocity
+	pFinalPos := pPosBeforeTick
+	for pos := range nearByBlocks{
+		model, ok := m.state.blockMap.GetBlockModel(pos, 0)
+		if !ok{
+			continue
+		} 
+		solid := model.FaceSolid(pos, ) // TODO
+		if !solid{
+			continue
+		}
+		bBBoxs := model.BBox(pos, ) // TODO
+		for _, bBBox := range bBBoxs{
+			t, ok := speedValueBetweenBBox(pBBoxBeforeTick, bBBox)
+			if !ok{
+				continue
+			}
+			if t < minDistance{
+				// TODO
+			}
+		}
+	}
+	ps.velocity = pFinalVelocity
+	ps.position = pFinalPos
+}
+
+// will return the t and bool of where the distance between pBBox and bBBox is val(ps.velocity)t and 
+// if that bBBox is reachable for pBBox with that velocity vector
+func speedValueBetweenBBox(pBBox, bBBox cube.BBox) (float64, bool) {
+	// TODO
 }
 
 func (m *movement) intersection(pBBox cube.BBox) map[cube.Pos]struct{} {

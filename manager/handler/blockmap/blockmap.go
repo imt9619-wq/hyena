@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	_ "github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl32"
@@ -19,7 +20,6 @@ type BlockMap struct {
 	chunkMap map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
 	chunkCentre world.ChunkPos
-	palette *palette
 }
 
 func NewBlockMap(conn *minecraft.Conn) *BlockMap {
@@ -28,7 +28,6 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	}
 	bm.chunkCentre = Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
 	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, radiusToChunkCount(bm.chunkRadius))
-	bm.palette = newPalette(conn.GameData().Items)
 	return bm
 }
 
@@ -89,14 +88,14 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 	chunk.SetBlock(x, y, z, layer, block)
 }
 
-func (b *BlockMap) GetBlockModel(pos mgl32.Vec3, layer uint8) (model world.BlockModel, exist bool) {
+func (b *BlockMap) GetBlockModel(pos cube.Pos, layer uint8) (model world.BlockModel, exist bool) {
 	model = nil
 	exist = false
 	if layer > 1{
 		return 
 	}
 
-	chunkPos:= Mgl32ToWorldChunkPos(pos)
+	chunkPos:= CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
 		return
@@ -108,6 +107,9 @@ func (b *BlockMap) GetBlockModel(pos mgl32.Vec3, layer uint8) (model world.Block
 
 	rid := c.Block(localX, worldY, localZ, layer)
 
-	model, exist = b.palette.model(int16(rid))
-	return
+	block, ok := world.BlockByRuntimeID(rid)
+	if !ok{
+		return
+	}
+	return block.Model(), true
 }

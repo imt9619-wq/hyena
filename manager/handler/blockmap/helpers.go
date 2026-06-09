@@ -3,6 +3,7 @@ package blockmap
 import (
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -14,6 +15,12 @@ func ProtocolPosToMgl32Vec3(protocolPos protocol.BlockPos) mgl32.Vec3 {
 }
 
 func Mgl32ToWorldChunkPos(pos mgl32.Vec3) world.ChunkPos {
+	chunkPosX := ShiftBackFourBits(int32(pos[0]))
+	chunkPosZ := ShiftBackFourBits(int32(pos[2]))
+	return world.ChunkPos([]int32{chunkPosX, chunkPosZ})
+}
+
+func CubePosToChunkPos(pos cube.Pos) world.ChunkPos {
 	chunkPosX := ShiftBackFourBits(int32(pos[0]))
 	chunkPosZ := ShiftBackFourBits(int32(pos[2]))
 	return world.ChunkPos([]int32{chunkPosX, chunkPosZ})
