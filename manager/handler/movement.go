@@ -57,13 +57,102 @@ func (m *movement) tick() {
 // and the player position will be set the point where the player BBox collied axis is the 
 // touching the collied block axis
 func (m *movement) checkCollision(){
-	pheight := float64(1.8)
-	pwidth := float64(0.6)
+	ps := m.state.player
+	pheight := float32(1.8)
+	pwidth := float32(0.6)
+	pPosBeforeTick := ps.position.Sub(ps.velocity)
+	pBBoxBeforeTick := cube.Box(float64(pPosBeforeTick[0]), 
+								float64(pPosBeforeTick[1]), 
+								float64(pPosBeforeTick[2]), 
+								float64(pPosBeforeTick[0]+pwidth), 
+								float64(pPosBeforeTick[1]+pheight), 
+								float64(pPosBeforeTick[2]+pwidth),
+							)
+	_ = m.intersection(pBBoxBeforeTick)
 }
 
+func (m *movement) intersection(pBBox cube.BBox) map[cube.Pos]struct{} {
+	ps := m.state.player
+	pCorners := pBBox.Corners()
+	velocity := mgl32Vec3Tomgl64Vec3(ps.velocity)
+
+	intersectedBlocks := make(map[cube.Pos]struct{}, 10)
+	for _, corner := range pCorners {
+		for index, val := range corner {
+			for _, point := range floorFloatBetweenAB(val, val+velocity[index]) {
+				other2Point, exist := m.threeDLine(corner, velocity, index, point)
+				if !exist{
+					break
+				}
+				var newVec3 mgl64.Vec3
+				currentOther2PointIndex := 0
+				for i:=0; i<=2; i++{
+					if i != index{
+						newVec3[i] = other2Point[currentOther2PointIndex]
+						currentOther2PointIndex++
+						continue
+					}
+					newVec3[i] = point
+				}
+				intersectedBlocks[Mgl64Vec3ToCubePos(newVec3)] = struct{}{}
+			}
+		}
+	}
+
+	return intersectedBlocks
+}
+
+func floorFloatBetweenAB(a float64, b float64) []float64 {
+	if a > b {
+		temp := b
+		b = a
+		a = temp
+	}
+	ceilDistance := int(math.Ceil(b-a))
+	pointsInAB := make([]float64, 0, ceilDistance)
+	
+	for i := math.Floor(a); i <= b; i++{
+		pointsInAB = append(pointsInAB, i)
+	}
+	return pointsInAB
+}
+
+func Mgl64Vec3ToCubePos(m mgl64.Vec3) cube.Pos {
+	x := int(math.Floor(m[0]))
+	y := int(math.Floor(m[1]))
+	z := int(math.Floor(m[2]))
+	return cube.Pos([]int{x, y, z})
+}
+
+// this function will take an inputPointIndex, 0 for x, 1 for y, 2 for z, then the 
+// value of that index, we also need a point that is known to be on the line(i) and of 
+// course the vector or slope of the line(direction), the returning points index are assending 
+// from left to right, so it can output the value of index in order of 0,2 0,1 or 1,2 , bool 
+// will return false if that point is impossible to reach
+func (m *movement) threeDLine(i mgl64.Vec3, direction mgl64.Vec3, inputPointIndex int, inputPointValue float64) (mgl64.Vec2, bool) {
+	var outputPointsPair mgl64.Vec2
+	if direction[inputPointIndex] == 0{	
+		return outputPointsPair, false
+	}
+	iToIndexOffset := (i[inputPointIndex] - inputPointValue) / direction[inputPointIndex]
+
+	nextIndex := 0
+	for index, val := range i{
+		if index == inputPointIndex{
+			continue
+		}
+		outputPointsPair[nextIndex] = val + iToIndexOffset * direction[index]
+		nextIndex++
+	}
+	return outputPointsPair, true
+}
 
 func istrue(b *atomic.Bool) bool {
 	return b.Load()
+}
+
+func mgl32Vec3Tomgl64Vec3(m mgl32.Vec3) mgl64.Vec3 {
+	return mgl64.Vec3([]float64{float64(m[0]), float64(m[1]), float64(m[2])})
 }
 
 func (m *movement) doMotions(){

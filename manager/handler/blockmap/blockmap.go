@@ -1,6 +1,8 @@
 package blockmap
 
 import (
+	"fmt"
+
 	_ "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
@@ -17,13 +19,16 @@ type BlockMap struct {
 	chunkMap map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
 	chunkCentre world.ChunkPos
+	palette *palette
 }
 
 func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	bm := &BlockMap{
 		chunkRadius: 15,
 	}
+	bm.chunkCentre = Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
 	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, radiusToChunkCount(bm.chunkRadius))
+	bm.palette = newPalette(conn.GameData().Items)
 	return bm
 }
 
@@ -58,6 +63,7 @@ func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
 	dim, _ := world.DimensionByID(int(pk.Dimension))
 	chunk, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), dim.Range())
 	if err != nil{
+		fmt.Printf("Error when networkdecode chunk: %s", err)
 		return
 	}
 	b.insertChunk(ProtocolPosToWorldPos(pk.Position), chunk)
@@ -86,22 +92,21 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 func (b *BlockMap) GetBlockModel(pos mgl32.Vec3, layer uint8) (model world.BlockModel, exist bool) {
 	model = nil
 	exist = false
-	if layer != 1{
+	if layer > 1{
 		return 
 	}
 
 	chunkPos:= Mgl32ToWorldChunkPos(pos)
-	chunk, ok := b.chunkMap[chunkPos]
-	chunkRange := chunk.Range()
-	if !(ok && chunkRange.Max() >= int(Float32Floor(pos[1])) && chunkRange.Min() <= int(Float32Floor(pos[1]))) {
+	c, ok := b.chunkMap[chunkPos]
+	if !ok {
 		return
 	}
 
-	subChunk := chunk.SubChunk(chunk.SubIndex(int16(pos.Y())))
-	x := byte(LastFourBit(int32(pos[0])))
-	y := byte(LastFourBit(int32(pos[1])))
-	z := byte(LastFourBit(int32(pos[2])))
-	rid := subChunk.Block(x, y, z, layer)
+	localX := uint8(pos[0]) & 0xF
+	localZ := uint8(pos[2]) & 0xF
+	worldY := int16(pos[1])
+
+	rid := c.Block(localX, worldY, localZ, layer) 
 
 	block, ok := world.BlockByRuntimeID(rid)
 	if !ok{

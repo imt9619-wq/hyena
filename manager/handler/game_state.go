@@ -26,7 +26,7 @@ func newGameState(conn *minecraft.Conn) *gameState {
 		player:      newPlayerState(conn),
 		flushedTick: &atomic.Int32{},
 		blockMap: blockmap.NewBlockMap(conn),
-		queue: make(chan *queueTransition, 128),
+		queue: make(chan *queueTransition, 512),
 	}
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	return gs
@@ -35,6 +35,7 @@ func newGameState(conn *minecraft.Conn) *gameState {
 func (gs *gameState) flush() {
 	defer gs.flushedTick.Add(1)
 	// gs.writePlayerAuthInput()
+	gs.blockMap.UpdateChunkCentre(gs.player.position)
 }
 
 func (gs *gameState) writePlayerAuthInput() {
