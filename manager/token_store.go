@@ -29,8 +29,15 @@ func (s *FileTokenStore) FetchAccounts() []AccountConfig {
 		log.Fatal(err)
 	}
 
-	entries, _ := os.ReadDir(s.Dir)
+	entries, err := os.ReadDir(s.Dir)
+	if err != nil {
+		log.Printf("reading token dir %s: %v", s.Dir, err)
+		return accounts
+	}
 	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
 		path := filepath.Join(s.Dir, entry.Name())
 		data, err := os.ReadFile(path)
 		if err != nil || !json.Valid(data) {

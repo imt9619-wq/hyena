@@ -10,35 +10,17 @@ import (
 )
 
 type movement struct {
-	state          *gameState
+	state     *gameState
 	isrunning *atomic.Bool
 	isjumping *atomic.Bool
-	isleftwalk *atomic.Bool
-	isrightwalk *atomic.Bool
-	isbackwalk *atomic.Bool
-	iswalk *atomic.Bool
-	inputFlags map[int]struct{}
-	lastTickInputFlags map[int]struct{}
 }
 
 func newMovement(state *gameState) *movement {
 	m := &movement{
-		state:         state,
+		state:     state,
 		isrunning: &atomic.Bool{},
 		isjumping: &atomic.Bool{},
-		isleftwalk: &atomic.Bool{},
-		isrightwalk: &atomic.Bool{},
-		isbackwalk: &atomic.Bool{},
-		iswalk: &atomic.Bool{},
-		inputFlags: make(map[int]struct{}, 5),
-		lastTickInputFlags: make(map[int]struct{}, 5),
 	}
-	m.isrunning.Store(false)
-	m.isjumping.Store(false)
-	m.isleftwalk.Store(false)
-	m.isrightwalk.Store(false)
-	m.isbackwalk.Store(false)
-	m.iswalk.Store(false)
 	return m
 }
 
@@ -48,30 +30,33 @@ func (m *movement) tick() {
 	m.checkCollision()
 }
 
-// cheakCollision will check if the player will collision with a block after apply velocity on its 
-// position, if collision player velocity towards the axis where the player BBox and block BBox 
-// collided will be set to 0, the position will also be set the position where the player BBox is 
+// cheakCollision will check if the player will collision with a block after apply velocity on its
+// position, if collision player velocity towards the axis where the player BBox and block BBox
+// collided will be set to 0, the position will also be set the position where the player BBox is
 // just touching the block BBox in the axis that they collided
 func (m *movement) checkCollision() {
 	ps := m.state.player
 	pheight := float32(1.8)
 	pwidth := float32(0.6)
 	pPosBeforeTick := ps.position.Sub(ps.velocity)
-	pBBoxBeforeTick := cube.Box(float64(pPosBeforeTick[0]), 
+	pBBoxBeforeTick := cube.Box(float64(pPosBeforeTick[0]-pwidth/2), 
 								float64(pPosBeforeTick[1]), 
-								float64(pPosBeforeTick[2]), 
-								float64(pPosBeforeTick[0]+pwidth), 
+								float64(pPosBeforeTick[2]-pwidth/2),
+								float64(pPosBeforeTick[0]+pwidth/2), 
 								float64(pPosBeforeTick[1]+pheight), 
-								float64(pPosBeforeTick[2]+pwidth),
+								float64(pPosBeforeTick[2]+pwidth/2),
 							)
 	leastOffsets := m.leastBoxOffsets(pBBoxBeforeTick)
 	indies, offsets := m.firstcollideAxis(leastOffsets)
 	for i, index := range indies{
 		ps.position[index] = ps.position[index] - ps.velocity[index] + offsets[i]
-		if index == 1 && ps.velocity[1] < offsets[i] && ps.velocity[1] < 0 {
+		if (index == 1 && ps.velocity[1] < offsets[i] && ps.velocity[1] < 0) || offsets[i] == 0 {
 			ps.onGround = true
 		}
-		if ps.velocity[index] != offsets[i]{
+		if ps.velocity[index] == offsets[i] && offsets[i] != 0 {
+			ps.onGround = false
+		}
+		if ps.velocity[index] != offsets[i] || offsets[i] == 0 {
 			ps.velocity[index] = 0
 		}
 	}
@@ -86,9 +71,16 @@ func (m *movement) checkCollision() {
 // index, float is the actual offset)
 func (m *movement) firstcollideAxis(offset leastBoxOffset) ([]int, []float32) {
 	ps := m.state.player
-	xToVRadio, yToVRadio, zToVRadio := float32(offset.leastXOffset)/ps.velocity[0], 
-									   float32(offset.leastYOffset)/ps.velocity[1], 
-									   float32(offset.leastZOffset)/ps.velocity[2]
+	var xToVRadio, yToVRadio, zToVRadio float32 = 1, 1, 1 
+	if ps.velocity[0] != 0{
+		xToVRadio = float32(offset.leastXOffset)/ps.velocity[0]
+	}
+	if ps.velocity[1] != 0{
+		yToVRadio = float32(offset.leastYOffset)/ps.velocity[1]
+	}
+	if ps.velocity[2] != 0{
+		zToVRadio = float32(offset.leastZOffset)/ps.velocity[2]
+	}
 	minOffsetRadioToVeloCity := min(xToVRadio, yToVRadio, zToVRadio)
 	minOffsetIndies := make([]int, 0, 2)
 	minOffsets := make([]float32, 0, 2)
@@ -269,7 +261,7 @@ func (m *movement) applyVelocity() {
 	if !ps.onGround{
 		ps.velocity[1] = (ps.velocity[1] + gravity) * drag
 	}
-	m.state.player.position.Add(m.state.player.velocity)
+	ps.position = ps.position.Add(ps.velocity)
 }
 
 func (m *movement) startRunning() {
@@ -304,27 +296,28 @@ func (m *movement) run() {
 
 	momentum := speed * slipperiness * 0.91
 	acceleration := float32(0.1) * movementMult * effectsMult * float32(math.Pow(0.6/float64(slipperiness), 3))
+	newSpeed := momentum + acceleration
 	if !ps.onGround {
 		acceleration = 0
 	}
 
 	sinD, cosD := ps.sinNCosOfSpeed()
-	ps.velocity[0] = momentum + acceleration*sinD + jumpBoost*float32(math.Sin(yawRad))
-	ps.velocity[2] = momentum + acceleration*cosD + jumpBoost*float32(math.Cos(yawRad))
+	ps.velocity[0] = (newSpeed)*sinD + jumpBoost*float32(math.Sin(yawRad))
+	ps.velocity[2] = (newSpeed)*cosD + jumpBoost*float32(math.Cos(yawRad))
 }
 
 func (m *movement) jump() {
 	ps := m.state.player
 	jumpSpeed := float32(0.42)
-	
+
 	if ps.onGround {
-		ps.position[1] = jumpSpeed
+		ps.velocity[1] = jumpSpeed
 	}
 }
 
 func rotationToPitchAndYaw(r mgl32.Vec3) (yaw, pitch float32) {
 	xz := math.Sqrt(math.Pow(float64(r[0]), 2) + math.Pow(float64(r[2]), 2))
-	mag := math.Cbrt(math.Pow(xz, 2) + math.Pow(float64(r[1]), 2))
+	mag := math.Sqrt(math.Pow(xz, 2) + math.Pow(float64(r[1]), 2))
 
 	pitch, yaw = float32(18/math.Pi), float32(18/math.Pi)
 	if xz > 0.003 {

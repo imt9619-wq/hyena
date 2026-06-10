@@ -3,7 +3,6 @@ package handler
 import "time"
 
 func (c *Connection) tick() {
-	defer c.endTick()
 	<-c.state.Exec(c.gameStateTick)
 }
 

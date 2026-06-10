@@ -6,21 +6,24 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type Manager struct {
-	config       *Config
-	accounts     []*Account
+	config        *Config
+	accounts      []*Account
 	accountConfMu *sync.Mutex
-	sessionsMu   sync.Mutex
-	sessions     map[uuid.UUID]*Session
-	sessionQueue chan *Session
-	closedNotify chan uuid.UUID
-	closed       chan struct{}
-	closeOnce    sync.Once
+	sessionsMu    sync.Mutex
+	sessions      map[uuid.UUID]*Session
+	sessionQueue  chan *Session
+	closedNotify  chan uuid.UUID
+	closed        chan struct{}
+	closeOnce     sync.Once
+	idleMu        sync.Mutex
+	idleCancel    context.CancelFunc
 }
 
 func (c Config) New(ctx context.Context) *Manager {
@@ -67,12 +70,46 @@ func (m *Manager) AccountsByTag() map[string]*Account {
 
 func (m *Manager) closeOnContext(ctx context.Context) {
 	<-ctx.Done()
+	m.closeIfNoSessions()
+}
+
+func (m *Manager) closeIfNoSessions() {
 	m.sessionsMu.Lock()
 	empty := len(m.sessions) == 0
 	m.sessionsMu.Unlock()
 	if empty {
 		m.Close()
 	}
+}
+
+func (m *Manager) cancelIdleClose() {
+	m.idleMu.Lock()
+	if m.idleCancel != nil {
+		m.idleCancel()
+		m.idleCancel = nil
+	}
+	m.idleMu.Unlock()
+}
+
+func (m *Manager) scheduleIdleClose(delay time.Duration) {
+	m.idleMu.Lock()
+	if m.idleCancel != nil {
+		m.idleCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	m.idleCancel = cancel
+	m.idleMu.Unlock()
+
+	go func() {
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+		case <-m.closed:
+		case <-timer.C:
+			m.closeIfNoSessions()
+		}
+	}()
 }
 
 func (m *Manager) listenForSignals() {
@@ -87,6 +124,8 @@ func (m *Manager) listenForSignals() {
 
 func (m *Manager) Close() {
 	m.closeOnce.Do(func() {
+		m.cancelIdleClose()
+
 		m.sessionsMu.Lock()
 		active := make([]*Session, 0, len(m.sessions))
 		for _, s := range m.sessions {
@@ -112,6 +151,8 @@ func (m *Manager) runSessionLoop() {
 	for {
 		select {
 		case session := <-m.sessionQueue:
+			m.cancelIdleClose()
+
 			m.sessionsMu.Lock()
 			m.sessions[session.id] = session
 			m.sessionsMu.Unlock()
@@ -131,7 +172,7 @@ func (m *Manager) runSessionLoop() {
 			empty := len(m.sessions) == 0
 			m.sessionsMu.Unlock()
 			if empty {
-				m.Close()
+				m.scheduleIdleClose(10 * time.Second)
 			}
 
 		case <-m.closed:

@@ -13,9 +13,8 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// BlockMap is a map that hold *chunk.Chunk, the chunk inside the map
-// should only be the chunk inside a player render distance, BlockMap
-// is not safe to be used by mutiple gorotuines
+// BlockMap holds *chunk.Chunk values for chunks within render distance.
+// BlockMap is not safe for use by multiple goroutines.
 type BlockMap struct {
 	chunkMap map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
@@ -45,7 +44,7 @@ func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
 }
 
 func (b *BlockMap) RefreshMapWithRenderDistance() {
-	seCor, nwCor := getRenderedChunkFlame(b.chunkCentre, b.chunkRadius)
+	seCor, nwCor := getRenderedChunkFrame(b.chunkCentre, b.chunkRadius)
 	for chunk := range b.chunkMap{
 		if !isRenderedChunk(chunk, seCor, nwCor) {
 			delete(b.chunkMap, chunk)
@@ -69,7 +68,7 @@ func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
 }
 
 func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
-	seCor, nwCor := getRenderedChunkFlame(b.chunkCentre, b.chunkRadius)
+	seCor, nwCor := getRenderedChunkFrame(b.chunkCentre, b.chunkRadius)
 	if !isRenderedChunk(pos, seCor, nwCor) {
 		return
 	}
@@ -88,10 +87,10 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 	chunk.SetBlock(x, y, z, layer, block)
 }
 
-// impetmentation of the world.BlockSource
+// Block implements world.BlockSource.
 func (b *BlockMap) Block(pos cube.Pos) (block world.Block) {
 	block, ok := b.block(pos, 0)
-	if name, _ := block.EncodeBlock(); !ok && name != "minecraft:air"{
+	if !ok{
 		airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
 		block, _ = world.BlockByRuntimeID(airRID)
 	}

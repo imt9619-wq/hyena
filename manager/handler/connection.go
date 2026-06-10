@@ -54,10 +54,6 @@ func (c *Connection) Handler() Handler {
 	return c.handler
 }
 
-func (c *Connection) endTick(){
-	
-}
-
 func (c *Connection) Close() {
 	c.closeOnce.Do(func() {
 		close(c.closed)

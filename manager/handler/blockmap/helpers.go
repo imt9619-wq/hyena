@@ -38,7 +38,7 @@ func ProtocolPosToWorldPos(pPos protocol.ChunkPos) world.ChunkPos {
 	return world.ChunkPos([]int32{pPos.X(), pPos.Z()})
 }
 
-func getRenderedChunkFlame(chunkCentre world.ChunkPos, chunkRadius int32) (SouthEastCorner world.ChunkPos, NorthWestCorner world.ChunkPos) {
+func getRenderedChunkFrame(chunkCentre world.ChunkPos, chunkRadius int32) (SouthEastCorner world.ChunkPos, NorthWestCorner world.ChunkPos) {
 	SouthEastCorner = world.ChunkPos([]int32{chunkCentre.X() + chunkRadius, chunkCentre.Z() + chunkRadius})
 	NorthWestCorner = world.ChunkPos([]int32{chunkCentre.X() - chunkRadius, chunkCentre.Z() - chunkRadius})
 	return
