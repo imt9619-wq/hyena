@@ -48,15 +48,11 @@ func (m *movement) tick() {
 	m.checkCollision()
 }
 
-// checkCollision will get all new BBox the player has position into, 
-// we assume there is no collision in last tick so we can check less blocks BBox, 
-// we will check what block pos is touched by a 3d object where it is shaped by mapping 
-// all the points the pBBox has intercepted when moving from the last tick position to the 
-// current tick position, it can have 0 points(if no move) to 14 points. if a collision happens 
-// on a given axis of the player BBox, the speed that is toward that axis will be reset to 0, 
-// and the player position will be set the point where the player BBox collied axis is the 
-// touching the collied block axis
-func (m *movement) checkCollision(){
+// cheakCollision will check if the player will collision with a block after apply velocity on its 
+// position, if collision player velocity towards the axis where the player BBox and block BBox 
+// collided will be set to 0, the position will also be set the position where the player BBox is 
+// just touching the block BBox in the axis that they collided
+func (m *movement) checkCollision() {
 	ps := m.state.player
 	pheight := float32(1.8)
 	pwidth := float32(0.6)
@@ -68,33 +64,47 @@ func (m *movement) checkCollision(){
 								float64(pPosBeforeTick[1]+pheight), 
 								float64(pPosBeforeTick[2]+pwidth),
 							)
-	offsets := m.leastBoxOffsets(pBBoxBeforeTick)
-	index, offset := m.firstcollideAxis(offsets)
-	ps.position[index] = ps.position[index] - ps.velocity[index] + offset
-	if index == 1 && ps.velocity[1] < offset && ps.velocity[1] < 0{
-		ps.onGround = true
-	}
-	if ps.velocity[index] != offset{
-		ps.velocity[index] = 0
+	leastOffsets := m.leastBoxOffsets(pBBoxBeforeTick)
+	indies, offsets := m.firstcollideAxis(leastOffsets)
+	for i, index := range indies{
+		ps.position[index] = ps.position[index] - ps.velocity[index] + offsets[i]
+		if index == 1 && ps.velocity[1] < offsets[i] && ps.velocity[1] < 0 {
+			ps.onGround = true
+		}
+		if ps.velocity[index] != offsets[i]{
+			ps.velocity[index] = 0
+		}
 	}
 }
 
-// return the index of the axis in ps.velocity where it is the axis where the first BBox collide occurs
-func (m *movement) firstcollideAxis(offset leastBoxOffset) (int, float32) {
+// will return the expected final delta on each axis of the player last tick position to its future tick, 
+// most of the time, only one offset on an axis is gonna be applied as the player will reach that axis of 
+// the bbox before the another two and if so the player will be stopped on that point already so the player 
+// wont actually be able to reach the another two axis, although there is some extreme case where offset to 
+// velocity radio is the same for two axis(or even three) where then the player will reach the two axis at
+// the same time, therefore we are returning a slice instead of just a float for those cases(int is for 
+// index, float is the actual offset)
+func (m *movement) firstcollideAxis(offset leastBoxOffset) ([]int, []float32) {
 	ps := m.state.player
 	xToVRadio, yToVRadio, zToVRadio := float32(offset.leastXOffset)/ps.velocity[0], 
 									   float32(offset.leastYOffset)/ps.velocity[1], 
 									   float32(offset.leastZOffset)/ps.velocity[2]
-	minOffset := min(xToVRadio, yToVRadio, zToVRadio)
-
-	switch minOffset {
-	case xToVRadio:
-		return 0, ps.velocity[0]
-	case yToVRadio:
-		return 1, ps.velocity[1]
-	default:
-		return 2, ps.velocity[2]
+	minOffsetRadioToVeloCity := min(xToVRadio, yToVRadio, zToVRadio)
+	minOffsetIndies := make([]int, 0, 2)
+	minOffsets := make([]float32, 0, 2)
+	if xToVRadio == minOffsetRadioToVeloCity{
+		minOffsetIndies = append(minOffsetIndies, 0)
+		minOffsets = append(minOffsets, float32(offset.leastXOffset))
 	}
+	if yToVRadio == minOffsetRadioToVeloCity{
+		minOffsetIndies = append(minOffsetIndies, 1)
+		minOffsets = append(minOffsets, float32(offset.leastYOffset))
+	}
+	if zToVRadio == minOffsetRadioToVeloCity{
+		minOffsetIndies = append(minOffsetIndies, 2)
+		minOffsets = append(minOffsets, float32(offset.leastZOffset))
+	}
+	return minOffsetIndies, minOffsets
 }
 
 type leastBoxOffset struct {
@@ -148,6 +158,8 @@ func (m *movement) leastBoxOffsets(pBBoxBeforeTick cube.BBox) leastBoxOffset {
 	return closestBox
 }
 
+// This function will get all the block pos that the player BBox will came accoss from the position of last 
+// tick to the future position after applying the velocity on the position, 
 func (m *movement) intersection(pBBox cube.BBox) map[cube.Pos]struct{} {
 	ps := m.state.player
 	pCorners := pBBox.Corners()
@@ -179,6 +191,15 @@ func (m *movement) intersection(pBBox cube.BBox) map[cube.Pos]struct{} {
 	return intersectedBlocks
 }
 
+// since a block position is gonna be a 3 integer array, we just need to get the integer in range of the integer 
+// of the player last tick position to the future tick position, for example, if a player when from [2.5, 0, 1.1] 
+// to [-5.1, 2, 0.6](pretty big changes for a tick, it is rare just for demostration) then the integer x,y,z in 
+// range of the last tick to the future tick is -5,-4,-3,-2,-1,0,1,2 for x. 0,1,2 for y. 1 for z. 
+// Then we can input all the value of the axis to threeDLine() to get all the points the player BBox will come 
+// accross on its way to the future tick position, since it is possible to have mutiple point of the same point 
+// of one axis of movement, we need the changes of integer from all axis instead of just inputing plotting one point 
+// of an axis to the threeDLine() as we all one get one return value, we designed the threeDLine is this way as we 
+// saw it as a simplier aroppoch
 func floorFloatBetweenAB(a float64, b float64) []float64 {
 	if a > b {
 		temp := b
@@ -205,7 +226,11 @@ func Mgl64Vec3ToCubePos(m mgl64.Vec3) cube.Pos {
 // value of that index, we also need a point that is known to be on the line(i) and of 
 // course the vector or slope of the line(direction), the returning points index are assending 
 // from left to right, so it can output the value of index in order of 0,2 0,1 or 1,2 , bool 
-// will return false if that point is impossible to reach
+// will return false if that point is impossible to reach, by inputting a value of a index we can 
+// calualate the whole pair of coordinate meaning we can get the y,z by inputting x, where the pair is one 
+// of the point that the player will come accoss on its path from the last tick position to the future tick(when 
+// we are saying future tick, that doesnt nessary means that the player will be in that position in the next tick, 
+// it is only the case if the player havent collision with any block on its way)
 func (m *movement) threeDLine(i mgl64.Vec3, direction mgl64.Vec3, inputPointIndex int, inputPointValue float64) (mgl64.Vec2, bool) {
 	var outputPointsPair mgl64.Vec2
 	if direction[inputPointIndex] == 0{	
