@@ -88,8 +88,18 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 	chunk.SetBlock(x, y, z, layer, block)
 }
 
-func (b *BlockMap) GetBlockModel(pos cube.Pos, layer uint8) (model world.BlockModel, exist bool) {
-	model = nil
+// impetmentation of the world.BlockSource
+func (b *BlockMap) Block(pos cube.Pos) (block world.Block) {
+	block, ok := b.block(pos, 0)
+	if name, _ := block.EncodeBlock(); !ok && name != "minecraft:air"{
+		airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
+		block, _ = world.BlockByRuntimeID(airRID)
+	}
+	return
+}
+
+func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bool) {
+	block = nil
 	exist = false
 	if layer > 1{
 		return 
@@ -107,9 +117,16 @@ func (b *BlockMap) GetBlockModel(pos cube.Pos, layer uint8) (model world.BlockMo
 
 	rid := c.Block(localX, worldY, localZ, layer)
 
-	block, ok := world.BlockByRuntimeID(rid)
-	if !ok{
+	block, exist = world.BlockByRuntimeID(rid)
+	return
+}
+
+func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel, exist bool) {
+	model = nil
+	exist = false
+	block, exist := b.block(pos, layer)
+	if !exist{
 		return
 	}
-	return block.Model(), true
+	return block.Model(), exist
 }

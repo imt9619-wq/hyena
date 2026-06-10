@@ -45,7 +45,7 @@ func newMovement(state *gameState) *movement {
 func (m *movement) tick() {
 	m.doMotions()
 	m.applyVelocity()
-	// m.checkCollision()
+	m.checkCollision()
 }
 
 // checkCollision will get all new BBox the player has position into, 
@@ -68,38 +68,84 @@ func (m *movement) checkCollision(){
 								float64(pPosBeforeTick[1]+pheight), 
 								float64(pPosBeforeTick[2]+pwidth),
 							)
-	nearByBlocks := m.intersection(pBBoxBeforeTick)
-	minDistance := float64(ps.velocity.Len()+1.8) // 1.8 is the square root of 3
-	pFinalVelocity := ps.velocity
-	pFinalPos := pPosBeforeTick
-	for pos := range nearByBlocks{
-		model, ok := m.state.blockMap.GetBlockModel(pos, 0)
+	offsets := m.leastBoxOffsets(pBBoxBeforeTick)
+	index, offset := m.firstcollideAxis(offsets)
+	ps.position[index] = ps.position[index] - ps.velocity[index] + offset
+	if index == 1 && ps.velocity[1] < offset && ps.velocity[1] < 0{
+		ps.onGround = true
+	}
+	if ps.velocity[index] != offset{
+		ps.velocity[index] = 0
+	}
+}
+
+// return the index of the axis in ps.velocity where it is the axis where the first BBox collide occurs
+func (m *movement) firstcollideAxis(offset leastBoxOffset) (int, float32) {
+	ps := m.state.player
+	xToVRadio, yToVRadio, zToVRadio := float32(offset.leastXOffset)/ps.velocity[0], 
+									   float32(offset.leastYOffset)/ps.velocity[1], 
+									   float32(offset.leastZOffset)/ps.velocity[2]
+	minOffset := min(xToVRadio, yToVRadio, zToVRadio)
+
+	switch minOffset {
+	case xToVRadio:
+		return 0, ps.velocity[0]
+	case yToVRadio:
+		return 1, ps.velocity[1]
+	default:
+		return 2, ps.velocity[2]
+	}
+}
+
+type leastBoxOffset struct {
+	leastXOffset float64
+	leastYOffset float64
+	leastZOffset float64
+}
+
+func (m *movement) leastBoxOffsets(pBBoxBeforeTick cube.BBox) leastBoxOffset {
+	ps := m.state.player
+	bm := m.state.blockMap
+	closestBox := leastBoxOffset{
+		leastXOffset: float64(ps.velocity[0]),
+		leastYOffset: float64(ps.velocity[1]),
+		leastZOffset: float64(ps.velocity[2]),
+	} 
+	xSolid, ySolid, zSolid := true, true, true
+	for pos := range m.intersection(pBBoxBeforeTick) {
+		model, ok := bm.BlockModel(pos, 0)
 		if !ok{
 			continue
 		} 
-		solid := model.FaceSolid(pos, ) // TODO
-		if !solid{
-			continue
+		bBBoxs := model.BBox(pos, bm)
+		if closestBox.leastXOffset > 0 {
+			xSolid =  model.FaceSolid(pos, cube.FaceEast, bm)
+		} else {
+			xSolid =  model.FaceSolid(pos, cube.FaceWest, bm)
 		}
-		bBBoxs := model.BBox(pos, ) // TODO
+		if closestBox.leastYOffset > 0 {
+			ySolid =  model.FaceSolid(pos, cube.FaceUp, bm)
+		} else {
+			ySolid =  model.FaceSolid(pos, cube.FaceDown, bm)
+		}
+		if closestBox.leastZOffset > 0 {
+			zSolid =  model.FaceSolid(pos, cube.FaceSouth, bm)
+		} else {
+			zSolid =  model.FaceSolid(pos, cube.FaceNorth, bm)
+		}
 		for _, bBBox := range bBBoxs{
-			t, ok := speedValueBetweenBBox(pBBoxBeforeTick, bBBox)
-			if !ok{
-				continue
+			if xSolid {
+				closestBox.leastXOffset = pBBoxBeforeTick.XOffset(bBBox, closestBox.leastXOffset)
 			}
-			if t < minDistance{
-				// TODO
+			if ySolid {
+				closestBox.leastYOffset = pBBoxBeforeTick.YOffset(bBBox, closestBox.leastYOffset)
+			}
+			if zSolid {
+				closestBox.leastZOffset = pBBoxBeforeTick.ZOffset(bBBox, closestBox.leastZOffset)
 			}
 		}
 	}
-	ps.velocity = pFinalVelocity
-	ps.position = pFinalPos
-}
-
-// will return the t and bool of where the distance between pBBox and bBBox is val(ps.velocity)t and 
-// if that bBBox is reachable for pBBox with that velocity vector
-func speedValueBetweenBBox(pBBox, bBBox cube.BBox) (float64, bool) {
-	// TODO
+	return closestBox
 }
 
 func (m *movement) intersection(pBBox cube.BBox) map[cube.Pos]struct{} {
