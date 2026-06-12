@@ -46,36 +46,33 @@ func (m *movement) checkCollision() {
 								float64(pPosBeforeTick[1]+pheight), 
 								float64(pPosBeforeTick[2]+pwidth/2),
 							)
-	indies, offsets := m.collideOffsets(pBBoxBeforeTick, ps.velocity)
-	m.walkStairs(pBBoxBeforeTick)
-	for i, index := range indies{
-		ps.position[index] = ps.position[index] - ps.velocity[index] + offsets[i]
-		if (index == 1 && ps.velocity[1] < offsets[i] && ps.velocity[1] < 0) || offsets[i] == 0 {
+	indies, closestBox := m.collideOffsets(pBBoxBeforeTick, ps.velocity)
+	m.walkStairs(pBBoxBeforeTick, indies, closestBox)
+	for _, index := range indies{
+		ps.position[index] = ps.position[index] - ps.velocity[index] + closestBox[index].leastOffset
+		if (index == 1 && ps.velocity[1] < closestBox[index].leastOffset && ps.velocity[1] < 0) || closestBox[index].leastOffset == 0 {
 			ps.onGround = true
 		}
-		if ps.velocity[index] == offsets[i] && offsets[i] != 0 {
+		if ps.velocity[index] == closestBox[index].leastOffset && closestBox[index].leastOffset != 0 {
 			ps.onGround = false
 		}
-		if ps.velocity[index] != offsets[i] || offsets[i] == 0 {
+		if ps.velocity[index] != closestBox[index].leastOffset || closestBox[index].leastOffset == 0 {
 			ps.velocity[index] = 0
 		}
 	}
 }
 
-func (m *movement) walkStairs(pBBox cube.BBox, indies []int, offsets []float32, lb *leastBoxOffset) {
+func (m *movement) walkStairs(pBBox cube.BBox, indies []int, closestBox map[int]*leastBoxOffset) {
 	ps := m.state.player
 	if !(ps.onGround && ps.velocity[1] == 0) || slices.Contains(indies, 1) {
 		return 
 	}
 	index := indies[0]
-	offset := offsets[0]
-	if len(indies) > 1 || ps.velocity[index] == offset {
+	offset := closestBox[index].leastOffset
+	if len(indies) > 1 || ps.velocity[index] == float32(offset) {
 		return
 	}
-	bboxWithOffset := lb.leastZOffsetBBoxes
-	if index == 0{
-		bboxWithOffset = lb.leastXOffsetBBoxes
-	}
+	bboxWithOffset := closestBox[index].leastOffsetBBoxes
 	var stepHeight float64 = 0
 	for _, bBBox := range bboxWithOffset {
 		currentStepHeight := bBBox.Max()[1] - pBBox.Min()[1]
@@ -88,14 +85,12 @@ func (m *movement) walkStairs(pBBox cube.BBox, indies []int, offsets []float32, 
 	}
 	walkStairDelta := ps.velocity
 	walkStairDelta[1] = float32(stepHeight)
-	newIndies, newOffsets := m.collideOffsets(pBBox, walkStairDelta)
-	for i, index := range newIndies{
+	newIndies, newClosestBox := m.collideOffsets(pBBox, walkStairDelta)
+	for _, index := range newIndies{
 		if index == 1 {
-			if newOffsets[i] < float32(stepHeight){
+			if newClosestBox[1].leastOffset < float32(stepHeight){
 				return 
 			}
-			slices.Delete(newIndies, i, i+1)
-			slices.Delete(newOffsets, i, i+1)
 		}
 	}
 	ps.position[1] += float32(stepHeight)
@@ -108,53 +103,38 @@ func (m *movement) walkStairs(pBBox cube.BBox, indies []int, offsets []float32, 
 // velocity radio is the same for two axis(or even three) where then the player will reach the two axis at
 // the same time, therefore we are returning a slice instead of just a float for those cases(int is for 
 // index, float is the actual offset)
-func (m *movement) firstCollideAxis(lb *leastBoxOffset, deltas mgl32.Vec3) ([]int, []float32) {
-	var xToVRadio, yToVRadio, zToVRadio float32 = 1, 1, 1 
-	if deltas[0] != 0{
-		xToVRadio = float32(lb.leastXOffset)/deltas[0]
+func (m *movement) firstCollideAxis(closestBox map[int]*leastBoxOffset, deltas mgl32.Vec3) ([]int, map[int]*leastBoxOffset) {
+	iToVRadio := make([]float32, 0, 3)
+	for i := 0; i < 3; i++ {
+		var radio float32 = 1
+		if deltas[i] != 0{
+			radio = float32(closestBox[i].leastOffset)/deltas[i]
+		}
+		iToVRadio = append(iToVRadio, radio)
 	}
-	if deltas[1] != 0{
-		yToVRadio = float32(lb.leastYOffset)/deltas[1]
-	}
-	if deltas[2] != 0{
-		zToVRadio = float32(lb.leastZOffset)/deltas[2]
-	}
-	minOffsetRadioToVeloCity := min(xToVRadio, yToVRadio, zToVRadio)
+	minOffsetRadioToVeloCity := min(iToVRadio[0], iToVRadio[1], iToVRadio[2])
 	minOffsetIndies := make([]int, 0, 2)
-	minOffsets := make([]float32, 0, 2)
-	if xToVRadio == minOffsetRadioToVeloCity{
-		minOffsetIndies = append(minOffsetIndies, 0)
-		minOffsets = append(minOffsets, float32(lb.leastXOffset))
+	for i, radio := range iToVRadio{
+		if radio == minOffsetRadioToVeloCity{
+			minOffsetIndies = append(minOffsetIndies, i)
+		}
 	}
-	if yToVRadio == minOffsetRadioToVeloCity{
-		minOffsetIndies = append(minOffsetIndies, 1)
-		minOffsets = append(minOffsets, float32(lb.leastYOffset))
-	}
-	if zToVRadio == minOffsetRadioToVeloCity{
-		minOffsetIndies = append(minOffsetIndies, 2)
-		minOffsets = append(minOffsets, float32(lb.leastZOffset))
-	}
-	return minOffsetIndies, minOffsets
+	return minOffsetIndies, closestBox
 }
 
 type leastBoxOffset struct {
-	leastXOffset float64
-	leastXOffsetBBoxes []cube.BBox
-	leastYOffset float64
-	leastYOffsetBBoxes []cube.BBox
-	leastZOffset float64
-	leastZOffsetBBoxes []cube.BBox
+	leastOffset float32
+	leastOffsetBBoxes []cube.BBox
 }
 
-func newLeastBoxOffset(deltas mgl32.Vec3) *leastBoxOffset {
-	closestBox := &leastBoxOffset{
-		leastXOffset: float64(deltas[0]),
-		leastYOffset: float64(deltas[1]),
-		leastZOffset: float64(deltas[2]),
-	} 
-	closestBox.leastXOffsetBBoxes = make([]cube.BBox, 0, 3)
-	closestBox.leastYOffsetBBoxes = make([]cube.BBox, 0, 3)
-	closestBox.leastZOffsetBBoxes = make([]cube.BBox, 0, 3)
+func newLeastBoxOffsetMap(deltas mgl32.Vec3) map[int]*leastBoxOffset {
+	closestBox := make(map[int]*leastBoxOffset, 3)
+	for i := 0; i < 3; i++{ 
+		closestBox[i] = &leastBoxOffset{
+		leastOffset: deltas[i],
+		leastOffsetBBoxes: make([]cube.BBox, 0, 3),
+		} 
+	}
 	return closestBox
 }
 
@@ -162,9 +142,9 @@ func different(x float64, y float64) float64 {
 	return math.Abs(x-y)
 }
 
-func (m *movement) collideOffsets(pBBoxBeforeTick cube.BBox, deltas mgl32.Vec3)  ([]int, []float32) {
+func (m *movement) collideOffsets(pBBoxBeforeTick cube.BBox, deltas mgl32.Vec3)  ([]int, map[int]*leastBoxOffset) {
 	bm := m.state.blockMap
-	closestBox := newLeastBoxOffset(deltas)
+	closestBox := newLeastBoxOffsetMap(deltas)
 	xSolid, ySolid, zSolid := true, true, true
 	var xOffset, yOffset, zOffset float64 = 0, 0, 0
 	var xFace, yFace, zFace = cube.FaceWest, cube.FaceDown, cube.FaceNorth
@@ -188,38 +168,30 @@ func (m *movement) collideOffsets(pBBoxBeforeTick cube.BBox, deltas mgl32.Vec3) 
 		zSolid =  model.FaceSolid(pos, zFace, bm)
 		for _, bBBox := range bBBoxs{
 			if xSolid {
-				xOffset = pBBoxBeforeTick.XOffset(bBBox, closestBox.leastXOffset)
-				if different(xOffset, closestBox.leastXOffset) > 0 {
-					clear(closestBox.leastXOffsetBBoxes)
-					closestBox.leastXOffset = xOffset
-				}
-				if xOffset == closestBox.leastXOffset{
-					closestBox.leastXOffsetBBoxes = append(closestBox.leastXOffsetBBoxes, bBBox)
-				}
+				xOffset = pBBoxBeforeTick.XOffset(bBBox, float64(closestBox[0].leastOffset))
+				closestBox[0].appendOffset(xOffset, bBBox)
 			}
 			if ySolid {
-				yOffset = pBBoxBeforeTick.YOffset(bBBox, closestBox.leastYOffset)
-				if different(yOffset, closestBox.leastYOffset) > 0 {
-					clear(closestBox.leastYOffsetBBoxes)
-					closestBox.leastYOffset = yOffset
-				}
-				if yOffset == closestBox.leastYOffset{
-					closestBox.leastYOffsetBBoxes = append(closestBox.leastYOffsetBBoxes, bBBox)
-				}
+				yOffset = pBBoxBeforeTick.YOffset(bBBox, float64(closestBox[1].leastOffset))
+				closestBox[1].appendOffset(yOffset, bBBox)
 			}
 			if zSolid {
-				zOffset = pBBoxBeforeTick.ZOffset(bBBox, closestBox.leastZOffset)
-				if different(zOffset, closestBox.leastZOffset) > 0 {
-					clear(closestBox.leastZOffsetBBoxes)
-					closestBox.leastZOffset = zOffset
-				}
-				if zOffset == closestBox.leastZOffset{
-					closestBox.leastZOffsetBBoxes = append(closestBox.leastZOffsetBBoxes, bBBox)
-				}
+				zOffset = pBBoxBeforeTick.ZOffset(bBBox, float64(closestBox[2].leastOffset))
+				closestBox[2].appendOffset(zOffset, bBBox)
 			}
 		}
 	}
 	return m.firstCollideAxis(closestBox, deltas)
+}
+
+func (lb *leastBoxOffset) appendOffset(offset float64, bBBox cube.BBox) {
+	if different(offset, float64(lb.leastOffset)) > 0 {
+		clear(lb.leastOffsetBBoxes)
+		lb.leastOffset = float32(offset)
+	}
+	if offset == float64(lb.leastOffset) {
+		lb.leastOffsetBBoxes = append(lb.leastOffsetBBoxes, bBBox)
+	}
 }
 
 // This function will get all the block pos that the player BBox will came accoss from the position of last 
