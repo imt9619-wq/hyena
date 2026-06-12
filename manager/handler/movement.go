@@ -2,7 +2,7 @@ package handler
 
 import (
 	"math"
-	"sync/atomic"
+	"slices"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
@@ -11,15 +11,15 @@ import (
 
 type movement struct {
 	state     *gameState
-	isrunning *atomic.Bool
-	isjumping *atomic.Bool
+	isrunning bool
+	isjumping bool
 }
 
 func newMovement(state *gameState) *movement {
 	m := &movement{
 		state:     state,
-		isrunning: &atomic.Bool{},
-		isjumping: &atomic.Bool{},
+		isrunning: false,
+		isjumping: false,
 	}
 	return m
 }
@@ -46,8 +46,8 @@ func (m *movement) checkCollision() {
 								float64(pPosBeforeTick[1]+pheight), 
 								float64(pPosBeforeTick[2]+pwidth/2),
 							)
-	leastOffsets := m.leastBoxOffsets(pBBoxBeforeTick)
-	indies, offsets := m.firstcollideAxis(leastOffsets)
+	indies, offsets := m.collideOffsets(pBBoxBeforeTick, ps.velocity)
+	m.walkStairs(pBBoxBeforeTick)
 	for i, index := range indies{
 		ps.position[index] = ps.position[index] - ps.velocity[index] + offsets[i]
 		if (index == 1 && ps.velocity[1] < offsets[i] && ps.velocity[1] < 0) || offsets[i] == 0 {
@@ -62,6 +62,45 @@ func (m *movement) checkCollision() {
 	}
 }
 
+func (m *movement) walkStairs(pBBox cube.BBox, indies []int, offsets []float32, lb *leastBoxOffset) {
+	ps := m.state.player
+	if !(ps.onGround && ps.velocity[1] == 0) || slices.Contains(indies, 1) {
+		return 
+	}
+	index := indies[0]
+	offset := offsets[0]
+	if len(indies) > 1 || ps.velocity[index] == offset {
+		return
+	}
+	bboxWithOffset := lb.leastZOffsetBBoxes
+	if index == 0{
+		bboxWithOffset = lb.leastXOffsetBBoxes
+	}
+	var stepHeight float64 = 0
+	for _, bBBox := range bboxWithOffset {
+		currentStepHeight := bBBox.Max()[1] - pBBox.Min()[1]
+		if currentStepHeight > stepHeight{
+			stepHeight = currentStepHeight
+		}
+		if currentStepHeight > 0.6 {
+			return 
+		}
+	}
+	walkStairDelta := ps.velocity
+	walkStairDelta[1] = float32(stepHeight)
+	newIndies, newOffsets := m.collideOffsets(pBBox, walkStairDelta)
+	for i, index := range newIndies{
+		if index == 1 {
+			if newOffsets[i] < float32(stepHeight){
+				return 
+			}
+			slices.Delete(newIndies, i, i+1)
+			slices.Delete(newOffsets, i, i+1)
+		}
+	}
+	ps.position[1] += float32(stepHeight)
+}
+
 // will return the expected final delta on each axis of the player last tick position to its future tick, 
 // most of the time, only one offset on an axis is gonna be applied as the player will reach that axis of 
 // the bbox before the another two and if so the player will be stopped on that point already so the player 
@@ -69,85 +108,118 @@ func (m *movement) checkCollision() {
 // velocity radio is the same for two axis(or even three) where then the player will reach the two axis at
 // the same time, therefore we are returning a slice instead of just a float for those cases(int is for 
 // index, float is the actual offset)
-func (m *movement) firstcollideAxis(offset leastBoxOffset) ([]int, []float32) {
-	ps := m.state.player
+func (m *movement) firstCollideAxis(lb *leastBoxOffset, deltas mgl32.Vec3) ([]int, []float32) {
 	var xToVRadio, yToVRadio, zToVRadio float32 = 1, 1, 1 
-	if ps.velocity[0] != 0{
-		xToVRadio = float32(offset.leastXOffset)/ps.velocity[0]
+	if deltas[0] != 0{
+		xToVRadio = float32(lb.leastXOffset)/deltas[0]
 	}
-	if ps.velocity[1] != 0{
-		yToVRadio = float32(offset.leastYOffset)/ps.velocity[1]
+	if deltas[1] != 0{
+		yToVRadio = float32(lb.leastYOffset)/deltas[1]
 	}
-	if ps.velocity[2] != 0{
-		zToVRadio = float32(offset.leastZOffset)/ps.velocity[2]
+	if deltas[2] != 0{
+		zToVRadio = float32(lb.leastZOffset)/deltas[2]
 	}
 	minOffsetRadioToVeloCity := min(xToVRadio, yToVRadio, zToVRadio)
 	minOffsetIndies := make([]int, 0, 2)
 	minOffsets := make([]float32, 0, 2)
 	if xToVRadio == minOffsetRadioToVeloCity{
 		minOffsetIndies = append(minOffsetIndies, 0)
-		minOffsets = append(minOffsets, float32(offset.leastXOffset))
+		minOffsets = append(minOffsets, float32(lb.leastXOffset))
 	}
 	if yToVRadio == minOffsetRadioToVeloCity{
 		minOffsetIndies = append(minOffsetIndies, 1)
-		minOffsets = append(minOffsets, float32(offset.leastYOffset))
+		minOffsets = append(minOffsets, float32(lb.leastYOffset))
 	}
 	if zToVRadio == minOffsetRadioToVeloCity{
 		minOffsetIndies = append(minOffsetIndies, 2)
-		minOffsets = append(minOffsets, float32(offset.leastZOffset))
+		minOffsets = append(minOffsets, float32(lb.leastZOffset))
 	}
 	return minOffsetIndies, minOffsets
 }
 
 type leastBoxOffset struct {
 	leastXOffset float64
+	leastXOffsetBBoxes []cube.BBox
 	leastYOffset float64
+	leastYOffsetBBoxes []cube.BBox
 	leastZOffset float64
+	leastZOffsetBBoxes []cube.BBox
 }
 
-func (m *movement) leastBoxOffsets(pBBoxBeforeTick cube.BBox) leastBoxOffset {
-	ps := m.state.player
-	bm := m.state.blockMap
-	closestBox := leastBoxOffset{
-		leastXOffset: float64(ps.velocity[0]),
-		leastYOffset: float64(ps.velocity[1]),
-		leastZOffset: float64(ps.velocity[2]),
+func newLeastBoxOffset(deltas mgl32.Vec3) *leastBoxOffset {
+	closestBox := &leastBoxOffset{
+		leastXOffset: float64(deltas[0]),
+		leastYOffset: float64(deltas[1]),
+		leastZOffset: float64(deltas[2]),
 	} 
+	closestBox.leastXOffsetBBoxes = make([]cube.BBox, 0, 3)
+	closestBox.leastYOffsetBBoxes = make([]cube.BBox, 0, 3)
+	closestBox.leastZOffsetBBoxes = make([]cube.BBox, 0, 3)
+	return closestBox
+}
+
+func different(x float64, y float64) float64 {
+	return math.Abs(x-y)
+}
+
+func (m *movement) collideOffsets(pBBoxBeforeTick cube.BBox, deltas mgl32.Vec3)  ([]int, []float32) {
+	bm := m.state.blockMap
+	closestBox := newLeastBoxOffset(deltas)
 	xSolid, ySolid, zSolid := true, true, true
+	var xOffset, yOffset, zOffset float64 = 0, 0, 0
+	var xFace, yFace, zFace = cube.FaceWest, cube.FaceDown, cube.FaceNorth
+	if deltas[0] > 0 {
+		xFace = cube.FaceEast
+	}
+	if deltas[1] > 0 {
+		yFace = cube.FaceUp
+	}
+	if deltas[2] > 0 {
+		zFace = cube.FaceSouth
+	}
 	for pos := range m.intersection(pBBoxBeforeTick) {
 		model, ok := bm.BlockModel(pos, 0)
 		if !ok{
 			continue
 		} 
 		bBBoxs := model.BBox(pos, bm)
-		if closestBox.leastXOffset > 0 {
-			xSolid =  model.FaceSolid(pos, cube.FaceEast, bm)
-		} else {
-			xSolid =  model.FaceSolid(pos, cube.FaceWest, bm)
-		}
-		if closestBox.leastYOffset > 0 {
-			ySolid =  model.FaceSolid(pos, cube.FaceUp, bm)
-		} else {
-			ySolid =  model.FaceSolid(pos, cube.FaceDown, bm)
-		}
-		if closestBox.leastZOffset > 0 {
-			zSolid =  model.FaceSolid(pos, cube.FaceSouth, bm)
-		} else {
-			zSolid =  model.FaceSolid(pos, cube.FaceNorth, bm)
-		}
+		xSolid =  model.FaceSolid(pos, xFace, bm)
+		ySolid =  model.FaceSolid(pos, yFace, bm)
+		zSolid =  model.FaceSolid(pos, zFace, bm)
 		for _, bBBox := range bBBoxs{
 			if xSolid {
-				closestBox.leastXOffset = pBBoxBeforeTick.XOffset(bBBox, closestBox.leastXOffset)
+				xOffset = pBBoxBeforeTick.XOffset(bBBox, closestBox.leastXOffset)
+				if different(xOffset, closestBox.leastXOffset) > 0 {
+					clear(closestBox.leastXOffsetBBoxes)
+					closestBox.leastXOffset = xOffset
+				}
+				if xOffset == closestBox.leastXOffset{
+					closestBox.leastXOffsetBBoxes = append(closestBox.leastXOffsetBBoxes, bBBox)
+				}
 			}
 			if ySolid {
-				closestBox.leastYOffset = pBBoxBeforeTick.YOffset(bBBox, closestBox.leastYOffset)
+				yOffset = pBBoxBeforeTick.YOffset(bBBox, closestBox.leastYOffset)
+				if different(yOffset, closestBox.leastYOffset) > 0 {
+					clear(closestBox.leastYOffsetBBoxes)
+					closestBox.leastYOffset = yOffset
+				}
+				if yOffset == closestBox.leastYOffset{
+					closestBox.leastYOffsetBBoxes = append(closestBox.leastYOffsetBBoxes, bBBox)
+				}
 			}
 			if zSolid {
-				closestBox.leastZOffset = pBBoxBeforeTick.ZOffset(bBBox, closestBox.leastZOffset)
+				zOffset = pBBoxBeforeTick.ZOffset(bBBox, closestBox.leastZOffset)
+				if different(zOffset, closestBox.leastZOffset) > 0 {
+					clear(closestBox.leastZOffsetBBoxes)
+					closestBox.leastZOffset = zOffset
+				}
+				if zOffset == closestBox.leastZOffset{
+					closestBox.leastZOffsetBBoxes = append(closestBox.leastZOffsetBBoxes, bBBox)
+				}
 			}
 		}
 	}
-	return closestBox
+	return m.firstCollideAxis(closestBox, deltas)
 }
 
 // This function will get all the block pos that the player BBox will came accoss from the position of last 
@@ -228,7 +300,7 @@ func (m *movement) threeDLine(i mgl64.Vec3, direction mgl64.Vec3, inputPointInde
 	if direction[inputPointIndex] == 0{	
 		return outputPointsPair, false
 	}
-	iToIndexOffset := (i[inputPointIndex] - inputPointValue) / direction[inputPointIndex]
+	iToIndexOffset := (inputPointValue - i[inputPointIndex]) / direction[inputPointIndex]
 
 	nextIndex := 0
 	for index, val := range i{
@@ -241,17 +313,13 @@ func (m *movement) threeDLine(i mgl64.Vec3, direction mgl64.Vec3, inputPointInde
 	return outputPointsPair, true
 }
 
-func istrue(b *atomic.Bool) bool {
-	return b.Load()
-}
-
 func mgl32Vec3Tomgl64Vec3(m mgl32.Vec3) mgl64.Vec3 {
 	return mgl64.Vec3([]float64{float64(m[0]), float64(m[1]), float64(m[2])})
 }
 
 func (m *movement) doMotions(){
-	if istrue(m.isrunning) {m.run()}
-	if istrue(m.isjumping) {m.jump()}
+	if m.isrunning {m.run()}
+	if m.isjumping {m.jump()}
 }
 
 func (m *movement) applyVelocity() {
@@ -265,19 +333,19 @@ func (m *movement) applyVelocity() {
 }
 
 func (m *movement) startRunning() {
-	m.isrunning.Store(true)
+	m.state.Exec(func(q *Qx) {m.isrunning = true})
 }
 
 func (m *movement) stopRunning() {
-	m.isrunning.Store(false)
+	m.state.Exec(func(q *Qx) {m.isrunning = false})
 }
 
 func (m *movement) startJumping() {
-	m.isjumping.Store(true)
+	m.state.Exec(func(q *Qx) {m.isjumping = true})
 }
 
 func (m *movement) stopJumping() {
-	m.isjumping.Store(false)
+	m.state.Exec(func(q *Qx) {m.isjumping = false})
 }
 
 func (m *movement) run() {
@@ -287,7 +355,7 @@ func (m *movement) run() {
 	ps := m.state.player
 
 	jumpBoost := float32(0.2)
-	if !istrue(m.isjumping) {
+	if !m.isjumping {
 		jumpBoost = 0
 	}
 
