@@ -1,10 +1,8 @@
 package handler
 
-// Qx idea is basically the same as Tx for a dragonfly world, but 
-// instead of Tx for a world, we have Tx for a gameState, we call 
-// it Qx instead of Tx so we wont confuse it with the Tx from dragonfly
+// Qx is the serialised mutation context for gameState, similar to dragonfly's Tx.
 type Qx struct {
-	gs *gameState
+	gs     *gameState
 	closed bool
 }
 

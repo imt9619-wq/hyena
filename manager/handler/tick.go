@@ -8,7 +8,7 @@ func (c *Connection) tick() {
 
 func (c *Connection) gameStateTick(q *Qx) {
 	defer c.state.flush()
-	c.movement.tick()
+	c.state.session.Tick()
 }
 
 func (c *Connection) startTicking() {

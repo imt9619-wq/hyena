@@ -10,7 +10,6 @@ import (
 type Connection struct {
 	*minecraft.Conn
 	handler   Handler
-	movement  *movement
 	closeOnce *sync.Once
 	closed    chan struct{}
 	state     *gameState
@@ -24,26 +23,25 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		closeOnce: &sync.Once{},
 	}
 	c.state = newGameState(conn)
-	c.movement = newMovement(c.state)
 	c.startTicking()
 	c.state.startRunningQueue(c)
 	return c
 }
 
 func (c *Connection) StartRunning() {
-	c.movement.startRunning()
+	c.state.Exec(func(q *Qx) { c.state.session.SetRunning(true) })
 }
 
 func (c *Connection) StopRunning() {
-	c.movement.stopRunning()
+	c.state.Exec(func(q *Qx) { c.state.session.SetRunning(false) })
 }
 
 func (c *Connection) StartJumping() {
-	c.movement.startJumping()
+	c.state.Exec(func(q *Qx) { c.state.session.SetJumping(true) })
 }
 
 func (c *Connection) StopJumping() {
-	c.movement.stopJumping()
+	c.state.Exec(func(q *Qx) { c.state.session.SetJumping(false) })
 }
 
 func (c *Connection) SetHandler(h Handler) {
