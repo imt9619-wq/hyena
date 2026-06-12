@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/manager/handler/blockmap"
-	"github.com/imt9619-wq/hyena/manager/sim"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -29,34 +28,34 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 	if c.state.entityRuntimeID != pk.EntityRuntimeID {
 		return
 	}
-	yaw, pitch := sim.RotationToPitchAndYaw(pk.Rotation)
-	p := c.state.session.Player
+	yaw, pitch := rotationToPitchAndYaw(pk.Rotation)
+	ps := c.state.player
 
 	c.state.Exec(func(q *Qx) {
-		p.Position = pk.Position
-		p.Velocity = mgl32.Vec3{}
-		p.Pitch = pitch
-		p.Yaw = yaw
+		ps.position = pk.Position
+		ps.velocity = mgl32.Vec3{}
+		ps.pitch = pitch
+		ps.yaw = yaw
 	})
 }
 
 func (c *Connection) ReplyLevelChunk(pk *packet.LevelChunk) {
 	c.state.Exec(func(q *Qx) {
-		c.state.session.BlockMap.InsertLevelChunk(pk)
+		c.state.blockMap.InsertLevelChunk(pk)
 	})
 }
 
 func (c *Connection) ReplyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
 	posInMgl32 := blockmap.ProtocolPosToMgl32Vec3(pk.Position)
 	c.state.Exec(func(q *Qx) {
-		c.state.session.BlockMap.UpdateChunkRadius(int32(pk.Radius))
-		c.state.session.BlockMap.UpdateChunkCentre(posInMgl32)
+		c.state.blockMap.UpdateChunkRadius(int32(pk.Radius))
+		c.state.blockMap.UpdateChunkCentre(posInMgl32)
 	})
 }
 
 func (c *Connection) ReplyChunkRadiusUpdated(pk *packet.ChunkRadiusUpdated) {
 	c.state.Exec(func(q *Qx) {
-		c.state.session.BlockMap.UpdateChunkRadius(pk.ChunkRadius)
+		c.state.blockMap.UpdateChunkRadius(pk.ChunkRadius)
 	})
 }
 
@@ -68,7 +67,7 @@ func (c *Connection) ReplyUpdateAttributes(pk *packet.UpdateAttributes) {
 		switch an := attribute.Name; an {
 		case "minecraft:movement":
 			c.state.Exec(func(q *Qx) {
-				c.state.session.Player.SetSpeedTo(attribute.Value)
+				c.state.player.setSpeedTo(attribute.Value)
 			})
 		}
 	}
@@ -79,12 +78,12 @@ func (c *Connection) ReplySetActorMotion(pk *packet.SetActorMotion) {
 		return
 	}
 	c.state.Exec(func(q *Qx) {
-		c.state.session.Player.Velocity = pk.Velocity
+		c.state.player.velocity = pk.Velocity
 	})
 }
 
 func (c *Connection) ReplyUpdateBlock(pk *packet.UpdateBlock) {
 	c.state.Exec(func(q *Qx) {
-		c.state.session.BlockMap.SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
+		c.state.blockMap.SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
 	})
 }
