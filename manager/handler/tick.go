@@ -1,13 +1,17 @@
 package handler
 
-import "time"
+import (
+	"time"
+
+	"github.com/imt9619-wq/hyena/game"
+)
 
 func (c *Connection) tick() {
 	<-c.state.Exec(c.gameStateTick)
 }
 
-func (c *Connection) gameStateTick(q *Qx) {
-	defer c.state.flush()
+func (c *Connection) gameStateTick(q *game.Qx) {
+	defer c.state.Flush()
 	c.movement.tick()
 }
 

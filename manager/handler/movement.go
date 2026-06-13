@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/game"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 )
 
 type movement struct {
-	state     *gameState
+	state     *game.GameState
 	isrunning bool
 	isjumping bool
 
@@ -28,7 +29,7 @@ type movement struct {
 	floorPointsScratch []float64
 }
 
-func newMovement(state *gameState) *movement {
+func newMovement(state *game.GameState) *movement {
 	return &movement{
 		state:           state,
 		intersectBlocks: make(map[cube.Pos]struct{}, 16),
@@ -53,21 +54,21 @@ func (m *movement) doMotions() {
 // collided will be set to 0, the position will also be set the position where the player BBox is
 // just touching the block BBox in the axis that they collided
 func (m *movement) checkCollision() {
-	ps := m.state.player
-	pPosBeforeTick := ps.position.Sub(ps.velocity)
+	ps := m.state.Player()
+	pPosBeforeTick := ps.Position.Sub(ps.Velocity)
 	pBBoxBeforeTick := playerBBox(pPosBeforeTick)
 	c := m.walkPath(pBBoxBeforeTick)
 	for i := 0; i < c.nIndies; i++ {
 		index := c.indies[i]
-		ps.position[index] = ps.position[index] - ps.velocity[index] + c.closestBox[index].leastOffset
-		if (index == 1 && ps.velocity[1] < c.closestBox[index].leastOffset && ps.velocity[1] < 0) || c.closestBox[index].leastOffset == 0 {
-			ps.onGround = true
+		ps.Position[index] = ps.Position[index] - ps.Velocity[index] + c.closestBox[index].leastOffset
+		if (index == 1 && ps.Velocity[1] < c.closestBox[index].leastOffset && ps.Velocity[1] < 0) || c.closestBox[index].leastOffset == 0 {
+			ps.OnGround = true
 		}
-		if ps.velocity[index] == c.closestBox[index].leastOffset && c.closestBox[index].leastOffset != 0 {
-			ps.onGround = false
+		if ps.Velocity[index] == c.closestBox[index].leastOffset && c.closestBox[index].leastOffset != 0 {
+			ps.OnGround = false
 		}
-		if ps.velocity[index] != c.closestBox[index].leastOffset || c.closestBox[index].leastOffset == 0 {
-			ps.velocity[index] = 0
+		if ps.Velocity[index] != c.closestBox[index].leastOffset || c.closestBox[index].leastOffset == 0 {
+			ps.Velocity[index] = 0
 		}
 	}
 }
@@ -86,7 +87,7 @@ func playerBBox(pos mgl32.Vec3) cube.BBox {
 
 func (m *movement) walkPath(pBBox cube.BBox) collideOffsets {
 	var foot axisOffsets
-	c := m.collideWithOffsets(pBBox, m.state.player.velocity, &foot)
+	c := m.collideWithOffsets(pBBox, m.state.Player().Velocity, &foot)
 	return m.walkStairs(pBBox, c)
 }
 
@@ -115,8 +116,8 @@ func collideIndiesContains(c collideOffsets, axis int) bool {
 }
 
 func (m *movement) walkStairs(pBBox cube.BBox, c collideOffsets) collideOffsets {
-	ps := m.state.player
-	if !((ps.onGround && ps.velocity[1] == 0) && !collideIndiesContains(c, 1)) {
+	ps := m.state.Player()
+	if !((ps.OnGround && ps.Velocity[1] == 0) && !collideIndiesContains(c, 1)) {
 		return c
 	}
 	if c.nIndies == 0 {
@@ -124,7 +125,7 @@ func (m *movement) walkStairs(pBBox cube.BBox, c collideOffsets) collideOffsets 
 	}
 	index := c.indies[0]
 	offset := c.closestBox[index].leastOffset
-	if c.nIndies > 1 || ps.velocity[index] == offset {
+	if c.nIndies > 1 || ps.Velocity[index] == offset {
 		return c
 	}
 	bboxWithOffset := c.closestBox[index].leastOffsetBBoxes
@@ -142,7 +143,7 @@ func (m *movement) walkStairs(pBBox cube.BBox, c collideOffsets) collideOffsets 
 		return c
 	}
 
-	walkStairDelta := ps.velocity
+	walkStairDelta := ps.Velocity
 	walkStairDelta[1] = float32(stepHeight)
 	var up axisOffsets
 	upC := m.collideWithOffsets(pBBox, walkStairDelta, &up)
@@ -155,7 +156,7 @@ func (m *movement) walkStairs(pBBox cube.BBox, c collideOffsets) collideOffsets 
 		return c
 	}
 
-	horizontalVel := ps.velocity
+	horizontalVel := ps.Velocity
 	horizontalVel[1] = 0
 	var step axisOffsets
 	stepC := m.collideWithOffsets(raisedBBox, horizontalVel, &step)
@@ -168,7 +169,7 @@ func (m *movement) walkStairs(pBBox cube.BBox, c collideOffsets) collideOffsets 
 		return c
 	}
 	stepC.closestBox[1].leastOffset = float32(stepHeight)
-	return m.firstCollideAxis(&stepC.closestBox, ps.velocity)
+	return m.firstCollideAxis(&stepC.closestBox, ps.Velocity)
 }
 
 // will return the expected final delta on each axis of the player last tick position to its future tick,
@@ -217,7 +218,7 @@ func (m *movement) collideWithOffsets(pBBoxBeforeTick cube.BBox, deltas mgl32.Ve
 		return collideOffsets{closestBox: *out}
 	}
 
-	bm := m.state.blockMap
+	bm := m.state.BlockMap()
 	xSolid, ySolid, zSolid := true, true, true
 	var xOffset, yOffset, zOffset float64
 	xFace, yFace, zFace := cube.FaceWest, cube.FaceDown, cube.FaceNorth
@@ -283,7 +284,7 @@ func (m *movement) blockPositionsInBBox(bbox cube.BBox) []cube.Pos {
 
 // bboxIntersectsSolid reports whether any block collision box overlaps pBBox.
 func (m *movement) bboxIntersectsSolid(pBBox cube.BBox) bool {
-	bm := m.state.blockMap
+	bm := m.state.BlockMap()
 	for _, pos := range m.blockPositionsInBBox(pBBox) {
 		model, ok := bm.BlockModel(pos, 0)
 		if !ok {
@@ -391,41 +392,41 @@ func mgl32Vec3Tomgl64Vec3(v mgl32.Vec3) mgl64.Vec3 {
 }
 
 func (m *movement) applyVelocity() {
-	ps := m.state.player
-	if !ps.onGround {
-		ps.velocity[1] = (ps.velocity[1] - 0.08) * 0.98
+	ps := m.state.Player()
+	if !ps.OnGround {
+		ps.Velocity[1] = (ps.Velocity[1] - 0.08) * 0.98
 	}
-	ps.position = ps.position.Add(ps.velocity)
+	ps.Position = ps.Position.Add(ps.Velocity)
 }
 
 func (m *movement) startRunning() {
-	m.state.Exec(func(q *Qx) { m.isrunning = true })
+	m.state.Exec(func(q *game.Qx) { m.isrunning = true })
 }
 
 func (m *movement) stopRunning() {
-	m.state.Exec(func(q *Qx) { m.isrunning = false })
+	m.state.Exec(func(q *game.Qx) { m.isrunning = false })
 }
 
 func (m *movement) startJumping() {
-	m.state.Exec(func(q *Qx) { m.isjumping = true })
+	m.state.Exec(func(q *game.Qx) { m.isjumping = true })
 }
 
 func (m *movement) stopJumping() {
-	m.state.Exec(func(q *Qx) { m.isjumping = false })
+	m.state.Exec(func(q *game.Qx) { m.isjumping = false })
 }
 
 // applyHorizontalMovement applies vanilla per-axis friction then sprint input acceleration.
 // See https://www.mcpk.wiki/wiki/Horizontal_Movement_Formulas
 func (m *movement) applyHorizontalMovement() {
-	ps := m.state.player
+	ps := m.state.Player()
 	slipperiness := float32(1.0)
-	if ps.onGround {
+	if ps.OnGround {
 		slipperiness = defaultSlipperiness
 	}
 	friction := slipperiness * 0.91
 
-	mx := ps.velocity[0] * friction
-	mz := ps.velocity[2] * friction
+	mx := ps.Velocity[0] * friction
+	mz := ps.Velocity[2] * friction
 	if math.Abs(float64(mx)) < negligibleMomentum {
 		mx = 0
 	}
@@ -434,36 +435,36 @@ func (m *movement) applyHorizontalMovement() {
 	}
 
 	if !m.isrunning {
-		ps.velocity[0] = mx
-		ps.velocity[2] = mz
+		ps.Velocity[0] = mx
+		ps.Velocity[2] = mz
 		return
 	}
 
-	yawRad := float64(ps.yaw) * (math.Pi / 180)
+	yawRad := float64(ps.Yaw) * (math.Pi / 180)
 	sinD := float32(math.Sin(yawRad))
 	cosD := float32(math.Cos(yawRad))
 
-	if ps.onGround {
+	if ps.OnGround {
 		accel := float32(0.1) * sprintMovementMult * float32(math.Pow(0.6/float64(slipperiness), 3))
-		ps.velocity[0] = mx + accel*sinD
-		ps.velocity[2] = mz + accel*cosD
+		ps.Velocity[0] = mx + accel*sinD
+		ps.Velocity[2] = mz + accel*cosD
 	} else {
 		airAccel := float32(0.02) * sprintMovementMult
-		ps.velocity[0] = mx + airAccel*sinD
-		ps.velocity[2] = mz + airAccel*cosD
+		ps.Velocity[0] = mx + airAccel*sinD
+		ps.Velocity[2] = mz + airAccel*cosD
 	}
 
-	if m.isjumping && ps.onGround {
-		ps.velocity[0] += sprintJumpBoost * sinD
-		ps.velocity[2] += sprintJumpBoost * cosD
+	if m.isjumping && ps.OnGround {
+		ps.Velocity[0] += sprintJumpBoost * sinD
+		ps.Velocity[2] += sprintJumpBoost * cosD
 	}
 }
 
 func (m *movement) jump() {
-	ps := m.state.player
-	if ps.onGround {
-		ps.velocity[1] = jumpSpeed
-		ps.onGround = false
+	ps := m.state.Player()
+	if ps.OnGround {
+		ps.Velocity[1] = jumpSpeed
+		ps.OnGround = false
 	}
 }
 
@@ -481,6 +482,4 @@ func rotationToPitchAndYaw(r mgl32.Vec3) (yaw, pitch float32) {
 	return
 }
 
-func xzSpeed(v mgl32.Vec3) float32 {
-	return float32(math.Sqrt(math.Pow(float64(v[0]), 2) + math.Pow(float64(v[2]), 2)))
-}
+

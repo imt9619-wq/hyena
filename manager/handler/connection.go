@@ -3,6 +3,7 @@ package handler
 import (
 	"sync"
 
+	"github.com/imt9619-wq/hyena/game"
 	"github.com/sandertv/gophertunnel/minecraft"
 )
 
@@ -13,7 +14,7 @@ type Connection struct {
 	movement  *movement
 	closeOnce *sync.Once
 	closed    chan struct{}
-	state     *gameState
+	state     *game.GameState
 }
 
 func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
@@ -23,10 +24,9 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		closed:    make(chan struct{}),
 		closeOnce: &sync.Once{},
 	}
-	c.state = newGameState(conn)
+	c.state = game.NewGameState(conn)
 	c.movement = newMovement(c.state)
 	c.startTicking()
-	c.state.startRunningQueue(c)
 	return c
 }
 
@@ -57,6 +57,7 @@ func (c *Connection) Handler() Handler {
 func (c *Connection) Close() {
 	c.closeOnce.Do(func() {
 		close(c.closed)
+		c.state.Close()
 		c.Conn.Close()
 	})
 }
