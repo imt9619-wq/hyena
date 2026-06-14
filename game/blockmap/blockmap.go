@@ -13,10 +13,12 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
+
 // BlockMap holds *chunk.Chunk values for chunks within render distance.
 // BlockMap is not safe for use by multiple goroutines.
 type BlockMap struct {
-	chunkMap map[world.ChunkPos]*chunk.Chunk
+	chunkMap    map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
 	chunkCentre world.ChunkPos
 }
@@ -30,22 +32,22 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	return bm
 }
 
-// When a player moved to a new chunk, chunk outside of their render 
-// chunk distance will be deleted, when they get back in to the deleted 
-// chunk(unloaded chunk), a levelchunk packet of that chunk should be 
+// When a player moved to a new chunk, chunk outside of their render
+// chunk distance will be deleted, when they get back in to the deleted
+// chunk(unloaded chunk), a levelchunk packet of that chunk should be
 // received to load back the chunk
 func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
 	chunkCentre := Mgl32ToWorldChunkPos(pos)
-	if b.chunkCentre == chunkCentre{
+	if b.chunkCentre == chunkCentre {
 		return
 	}
 	b.chunkCentre = chunkCentre
-	b.RefreshMapWithRenderDistance() 
+	b.RefreshMapWithRenderDistance()
 }
 
 func (b *BlockMap) RefreshMapWithRenderDistance() {
 	seCor, nwCor := getRenderedChunkFrame(b.chunkCentre, b.chunkRadius)
-	for chunk := range b.chunkMap{
+	for chunk := range b.chunkMap {
 		if !isRenderedChunk(chunk, seCor, nwCor) {
 			delete(b.chunkMap, chunk)
 		}
@@ -56,15 +58,23 @@ func (b *BlockMap) UpdateChunkRadius(r int32) {
 	b.chunkRadius = r
 }
 
-func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
-	airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
+func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
 	dim, _ := world.DimensionByID(int(pk.Dimension))
-	chunk, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), dim.Range())
-	if err != nil{
-		fmt.Printf("Error when networkdecode chunk: %s", err)
+	_ = dim.Range()
+}
+
+// insert levelchunk to chunkMap, will hit error if subChunkRequest is needed for the chunk
+func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
+	dim, _ := world.DimensionByID(int(pk.Dimension))
+	r := dim.Range()
+	chunkPos := ProtocolCPosToWorldCPos(pk.Position)
+
+	chunk, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), r)
+	if err != nil {
+		fmt.Printf("Error when networkdecode chunk: %s\n", err)
 		return
 	}
-	b.insertChunk(ProtocolPosToWorldPos(pk.Position), chunk)
+	b.insertChunk(chunkPos, chunk)
 }
 
 func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
@@ -78,7 +88,7 @@ func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
 func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 	chunkPos := ProtocolPosToWorldChunkPos(pos)
 	chunk, ok := b.chunkMap[chunkPos]
-	if !ok{
+	if !ok {
 		return
 	}
 	x := uint8(LastFourBit(pos.X()))
@@ -90,7 +100,7 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 // Block implements world.BlockSource.
 func (b *BlockMap) Block(pos cube.Pos) (block world.Block) {
 	block, ok := b.block(pos, 0)
-	if !ok{
+	if !ok {
 		airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
 		block, _ = world.BlockByRuntimeID(airRID)
 	}
@@ -100,11 +110,11 @@ func (b *BlockMap) Block(pos cube.Pos) (block world.Block) {
 func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bool) {
 	block = nil
 	exist = false
-	if layer > 1{
-		return 
+	if layer > 1 {
+		return
 	}
 
-	chunkPos:= CubePosToChunkPos(pos)
+	chunkPos := CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
 		return
@@ -124,7 +134,7 @@ func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel
 	model = nil
 	exist = false
 	block, exist := b.block(pos, layer)
-	if !exist{
+	if !exist {
 		return
 	}
 	return block.Model(), exist

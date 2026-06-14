@@ -34,7 +34,7 @@ func ShiftBackFourBits(x int32) int32 {
 	return x >> 4
 }
 
-func ProtocolPosToWorldPos(pPos protocol.ChunkPos) world.ChunkPos {
+func ProtocolCPosToWorldCPos(pPos protocol.ChunkPos) world.ChunkPos {
 	return world.ChunkPos([]int32{pPos.X(), pPos.Z()})
 }
 

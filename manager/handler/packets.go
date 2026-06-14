@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"fmt"
+
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/manager/handler/movements"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -35,13 +38,21 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 
 	c.state.Exec(func(q *game.Qx) {
 		ps.Position = pk.Position
-		ps.Velocity = mgl32.Vec3{}
+		ps.Velocity = mgl32.Vec3([3]float32{0})
 		ps.Pitch = pitch
 		ps.Yaw = yaw
+		ps.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }
 
 func (c *Connection) ReplyLevelChunk(pk *packet.LevelChunk) {
+	if pk.CacheEnabled {
+		panic("ClientCache is Enabled.\n")
+	}
+	if pk.SubChunkCount == protocol.SubChunkRequestModeLimited ||
+	   pk.SubChunkCount == protocol.SubChunkRequestModeLimitless {
+		fmt.Printf("need sub chunk request\n")
+	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().InsertLevelChunk(pk)
 	})

@@ -17,8 +17,10 @@ func main() {
 		return
 	}
 
-	go func() {
-		if err := acc.JoinServer("play.venitymc.com:19132", handler.DefaultHandler{}); err != nil {
+	go func() { 
+		// play.venitymc.com:19132
+		// 127.0.0.1:19135
+		if err := acc.JoinServer("127.0.0.1:19135", handler.DefaultHandler{}); err != nil {
 			fmt.Println(err)
 		}
 	}()

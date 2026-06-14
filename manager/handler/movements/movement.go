@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const (
@@ -77,5 +78,6 @@ func (m *Movement) setOnGround() {
 	)
 	if m.velocity[1] == 0 && m.bboxIntersectsSolid(tinyBBox) {
 		m.onGround = true
+		m.state.Player().SetFlag(packet.InputFlagVerticalCollision)
 	}
 }
