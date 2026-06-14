@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/imt9619-wq/hyena/manager/handler/movements"
 	"github.com/sandertv/gophertunnel/minecraft"
 )
 
@@ -11,7 +12,7 @@ import (
 type Connection struct {
 	*minecraft.Conn
 	handler   Handler
-	movement  *movement
+	movement  *movements.Movement
 	closeOnce *sync.Once
 	closed    chan struct{}
 	state     *game.GameState
@@ -25,25 +26,25 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		closeOnce: &sync.Once{},
 	}
 	c.state = game.NewGameState(conn)
-	c.movement = newMovement(c.state)
+	c.movement = movements.NewMovement(c.state)
 	c.startTicking()
 	return c
 }
 
 func (c *Connection) StartRunning() {
-	c.movement.startRunning()
+	c.movement.StartRunning()
 }
 
 func (c *Connection) StopRunning() {
-	c.movement.stopRunning()
+	c.movement.StopRunning()
 }
 
 func (c *Connection) StartJumping() {
-	c.movement.startJumping()
+	c.movement.StartJumping()
 }
 
 func (c *Connection) StopJumping() {
-	c.movement.stopJumping()
+	c.movement.StopJumping()
 }
 
 func (c *Connection) SetHandler(h Handler) {

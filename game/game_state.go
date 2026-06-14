@@ -1,8 +1,6 @@
 package game
 
 import (
-	"sync/atomic"
-
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -10,12 +8,11 @@ import (
 )
 
 // GameState holds per-session Minecraft world data used by movement and packet output.
-// Qx is only used for calling blockmap methods currently
+// Qx should be used for most GameState opteriation just like the *world.World in dragonfly
 type GameState struct {
 	conn            *minecraft.Conn
 	entityRuntimeID uint64
 	player          *playerState
-	flushedTick     *atomic.Int32
 	blockMap        *blockmap.BlockMap
 	queue           chan *queueTransition
 	closed          chan struct{}
@@ -25,7 +22,6 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	gs := &GameState{
 		conn:        conn,
 		player:      newPlayerState(conn),
-		flushedTick: &atomic.Int32{},
 		blockMap:    blockmap.NewBlockMap(conn),
 		queue:       make(chan *queueTransition, 512),
 		closed: 	 make(chan struct{}),
@@ -35,8 +31,7 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	return gs
 }
 
-func (gs *GameState) Flush() {
-	defer gs.flushedTick.Add(1)
+func (gs *GameState) UpdateRenderedChunks() {
 	gs.blockMap.UpdateChunkCentre(gs.player.Position)
 }
 

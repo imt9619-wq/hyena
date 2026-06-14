@@ -40,6 +40,10 @@ func (ps *playerState) sinNCosOfSpeed() (sinD, cosD float32) {
 	return
 }
 
+func (ps *playerState) SetVelocityTo(v mgl32.Vec3) {
+	ps.Velocity = v
+}
+
 func (ps *playerState) SetSpeedTo(s float32) {
 	sinD, cosD := ps.sinNCosOfSpeed()
 	ps.Velocity[0] = s*sinD

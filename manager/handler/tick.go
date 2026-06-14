@@ -11,8 +11,8 @@ func (c *Connection) tick() {
 }
 
 func (c *Connection) gameStateTick(q *game.Qx) {
-	defer c.state.Flush()
-	c.movement.tick()
+	defer c.state.UpdateRenderedChunks()
+	c.movement.Tick()
 }
 
 func (c *Connection) startTicking() {

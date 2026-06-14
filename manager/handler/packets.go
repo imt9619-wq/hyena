@@ -4,6 +4,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/blockmap"
+	"github.com/imt9619-wq/hyena/manager/handler/movements"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -29,7 +30,7 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
-	yaw, pitch := rotationToPitchAndYaw(pk.Rotation)
+	yaw, pitch := movements.RotationToPitchAndYaw(pk.Rotation)
 	ps := c.state.Player()
 
 	c.state.Exec(func(q *game.Qx) {
