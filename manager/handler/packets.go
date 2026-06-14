@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/blockmap"
@@ -23,10 +21,7 @@ func (c *Connection) ReplyNetworkStackLatency(pk *packet.NetworkStackLatency) {
 	if !pk.NeedsResponse {
 		return
 	}
-	c.WritePacket(&packet.NetworkStackLatency{
-		Timestamp:     pk.Timestamp * 1000000,
-		NeedsResponse: pk.NeedsResponse,
-	})
+	c.requestNetworkStackLatency(pk)
 }
 
 func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
@@ -51,10 +46,19 @@ func (c *Connection) ReplyLevelChunk(pk *packet.LevelChunk) {
 	}
 	if pk.SubChunkCount == protocol.SubChunkRequestModeLimited ||
 	   pk.SubChunkCount == protocol.SubChunkRequestModeLimitless {
-		fmt.Printf("need sub chunk request\n")
+		c.requestSubChunks(pk)
 	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().InsertLevelChunk(pk)
+	})
+}
+
+func (c *Connection) ReplySubChunk(pk *packet.SubChunk) {
+	if pk.CacheEnabled {
+		panic("ClientCache is Enabled.\n")
+	}
+	c.state.Exec(func(q *game.Qx) {
+		c.state.BlockMap().InsertSubChunk(pk)
 	})
 }
 

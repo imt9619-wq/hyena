@@ -61,6 +61,7 @@ func (b *BlockMap) UpdateChunkRadius(r int32) {
 func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
 	dim, _ := world.DimensionByID(int(pk.Dimension))
 	_ = dim.Range()
+	// TODO
 }
 
 // insert levelchunk to chunkMap, will hit error if subChunkRequest is needed for the chunk

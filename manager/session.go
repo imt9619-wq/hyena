@@ -63,6 +63,8 @@ func (s *Session) run() {
 			conn.ReplySetActorMotion(pk)
 		case *packet.UpdateBlock:
 			conn.ReplyUpdateBlock(pk)
+		case *packet.SubChunk:
+			conn.ReplySubChunk(pk)
 		default:
 		}
 	}
