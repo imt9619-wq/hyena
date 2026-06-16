@@ -27,13 +27,13 @@ type Movement struct {
 	isrunning     bool
 	isjumping     bool
 
-	cc *collisionCache
+	scratch *collisionScratch
 }
 
 func NewMovement(state *game.GameState) *Movement {
 	return &Movement{
-		state:           state,
-		cc: newCollisionCache(),
+		state:    state,
+		scratch:  newCollisionScratch(),
 	}
 }
 
