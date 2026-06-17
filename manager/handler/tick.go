@@ -12,11 +12,10 @@ func (c *Connection) tick() {
 }
 
 func (c *Connection) gameStateTick(q *game.Qx) {
-	defer c.state.UpdateRenderedChunks()
-	// GameState tick need to be tick before other tick
 	c.state.Tick()
 	c.movement.Tick()
 	c.setInputFlagBlockBreakingDelayEnabled()
+	c.requestSubChunkInQuery()
 	c.WritePacket(c.state.PlayerAuthInputWithState())
 }
 

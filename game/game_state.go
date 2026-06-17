@@ -30,10 +30,6 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	return gs
 }
 
-func (gs *GameState) UpdateRenderedChunks() {
-	gs.blockMap.UpdateChunkCentre(gs.player.Position)
-}
-
 // close the qx queue loop, will panic if close again after closing
 func (gs *GameState) Close() {
 	close(gs.closed)
@@ -50,6 +46,8 @@ func (gs *GameState) EntityRunTimeId() uint64 {
 func (gs *GameState) Tick() {
 	gs.tick++
 	gs.player.tick()
+	gs.blockMap.UpdateChunkCentre(gs.player.Position)
+	gs.blockMap.RefreshMapWithRenderDistance()
 }
 
 func (gs *GameState) GStick() uint64 {

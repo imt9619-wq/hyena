@@ -5,7 +5,6 @@ import (
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/manager/handler/movements"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -43,10 +42,6 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 func (c *Connection) ReplyLevelChunk(pk *packet.LevelChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
-	}
-	if pk.SubChunkCount == protocol.SubChunkRequestModeLimited ||
-	   pk.SubChunkCount == protocol.SubChunkRequestModeLimitless {
-		c.requestSubChunks(pk)
 	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().InsertLevelChunk(pk)

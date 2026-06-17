@@ -34,24 +34,20 @@ func ShiftBackFourBits(x int32) int32 {
 	return x >> 4
 }
 
+func subChunkPosWithOffset(pos protocol.SubChunkPos, offset protocol.SubChunkOffset) protocol.SubChunkPos {
+	return protocol.SubChunkPos{pos[0] + int32(offset[0]), pos[1] + int32(offset[1]), pos[2] + int32(offset[2])}
+}
+
+func subChunkPosToChunkPos(pos protocol.SubChunkPos) protocol.ChunkPos{
+	return protocol.ChunkPos{pos[0], pos[2]}
+}
+
 func ProtocolCPosToWorldCPos(pPos protocol.ChunkPos) world.ChunkPos {
 	return world.ChunkPos([]int32{pPos.X(), pPos.Z()})
 }
 
-func getRenderedChunkFrame(chunkCentre world.ChunkPos, chunkRadius int32) (SouthEastCorner world.ChunkPos, NorthWestCorner world.ChunkPos) {
-	SouthEastCorner = world.ChunkPos([]int32{chunkCentre.X() + chunkRadius, chunkCentre.Z() + chunkRadius})
-	NorthWestCorner = world.ChunkPos([]int32{chunkCentre.X() - chunkRadius, chunkCentre.Z() - chunkRadius})
-	return
-}
-
 func radiusToChunkCount(r int32) int32 {
 	return int32(math.Pow(float64(r*2+1), 2))
-}
-
-func isRenderedChunk(chunk world.ChunkPos, seCornerChunk world.ChunkPos, nwCornerChunk world.ChunkPos) bool {
-	isInXRange := (chunk.X() <= seCornerChunk.X() && chunk.X() >= nwCornerChunk.X())
-	isInZRange := (chunk.Z() <= seCornerChunk.Z() && chunk.Z() >= nwCornerChunk.Z())
-	return isInXRange && isInZRange
 }
 
 func ProtocolPosToWorldChunkPos(protocolPos protocol.BlockPos) world.ChunkPos {

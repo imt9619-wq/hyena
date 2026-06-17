@@ -1,8 +1,6 @@
 package blockmap
 
 import (
-	"fmt"
-
 	_ "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -10,7 +8,7 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
+	"github.com/df-mc/dragonfly/server/block"
 )
 
 var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
@@ -21,6 +19,8 @@ type BlockMap struct {
 	chunkMap    map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
 	chunkCentre world.ChunkPos
+	subChunkInQuery [3]map[protocol.ChunkPos]map[int32]struct{}
+	currentDim int32
 }
 
 func NewBlockMap(conn *minecraft.Conn) *BlockMap {
@@ -29,6 +29,11 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	}
 	bm.chunkCentre = Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
 	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, radiusToChunkCount(bm.chunkRadius))
+	for i := range bm.subChunkInQuery{
+		bm.subChunkInQuery[i] = make(
+			map[protocol.ChunkPos]map[int32]struct{}, 
+			radiusToChunkCount(bm.chunkRadius))
+	}
 	return bm
 }
 
@@ -42,45 +47,34 @@ func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
 		return
 	}
 	b.chunkCentre = chunkCentre
-	b.RefreshMapWithRenderDistance()
 }
 
 func (b *BlockMap) RefreshMapWithRenderDistance() {
-	seCor, nwCor := getRenderedChunkFrame(b.chunkCentre, b.chunkRadius)
 	for chunk := range b.chunkMap {
-		if !isRenderedChunk(chunk, seCor, nwCor) {
+		if !b.isRenderedChunk(chunk) {
 			delete(b.chunkMap, chunk)
 		}
 	}
+	for i, subQuery := range b.subChunkInQuery{
+		if i == int(b.currentDim){
+			for subchunk := range subQuery{
+				if !b.isRenderedChunk([2]int32{subchunk[0], subchunk[1]}) {
+					delete(b.subChunkInQuery[i], subchunk)
+				}
+			}
+			continue
+		}
+		clear(b.subChunkInQuery[i])
+	}
+	
 }
 
 func (b *BlockMap) UpdateChunkRadius(r int32) {
 	b.chunkRadius = r
 }
 
-func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
-	dim, _ := world.DimensionByID(int(pk.Dimension))
-	_ = dim.Range()
-	// TODO
-}
-
-// insert levelchunk to chunkMap, will hit error if subChunkRequest is needed for the chunk
-func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
-	dim, _ := world.DimensionByID(int(pk.Dimension))
-	r := dim.Range()
-	chunkPos := ProtocolCPosToWorldCPos(pk.Position)
-
-	chunk, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), r)
-	if err != nil {
-		fmt.Printf("Error when networkdecode chunk: %s\n", err)
-		return
-	}
-	b.insertChunk(chunkPos, chunk)
-}
-
 func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
-	seCor, nwCor := getRenderedChunkFrame(b.chunkCentre, b.chunkRadius)
-	if !isRenderedChunk(pos, seCor, nwCor) {
+	if !b.isRenderedChunk(pos) {
 		return
 	}
 	b.chunkMap[pos] = chunk
@@ -99,13 +93,17 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 }
 
 // Block implements world.BlockSource.
-func (b *BlockMap) Block(pos cube.Pos) (block world.Block) {
-	block, ok := b.block(pos, 0)
+func (b *BlockMap) Block(pos cube.Pos) (bl world.Block) {
+	bl, ok := b.block(pos, 0)
 	if !ok {
-		airRID, _ := chunk.StateToRuntimeID("minecraft:air", nil)
-		block, _ = world.BlockByRuntimeID(airRID)
+		// return invisibleBedrock incase the chunk of pos is not loaded
+		bl = block.InvisibleBedrock{}
 	}
 	return
+}
+
+func (b *BlockMap) SubChunkInQuery()  [3]map[protocol.ChunkPos]map[int32]struct{}{
+	return b.subChunkInQuery
 }
 
 func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bool) {
@@ -139,4 +137,9 @@ func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel
 		return
 	}
 	return block.Model(), exist
+}
+
+func (b *BlockMap) isRenderedChunk(chunk [2]int32) bool {
+	return b.chunkCentre[0]-b.chunkRadius <= chunk[0] && chunk[0] <= b.chunkCentre[0]+b.chunkRadius &&
+	b.chunkCentre[1]-b.chunkRadius <= chunk[1] && chunk[1] <= b.chunkCentre[1]+b.chunkRadius
 }
