@@ -48,6 +48,9 @@ func (m *Movement) Tick() {
 	m.applyCollision(m.getCollision())
 	m.setOnGround()
 	m.pasteToPlayerState()
+	/*if m.state.GStick()%10 == 0{
+		fmt.Printf("Movement on tick %d: %+v\n", m.state.GStick(), m)
+	}*/
 }
 
 func (m *Movement) pasteToPlayerState() {

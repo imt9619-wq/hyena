@@ -32,7 +32,7 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 
 	c.state.Exec(func(q *game.Qx) {
 		ps.Position = pk.Position
-		ps.Velocity = mgl32.Vec3([3]float32{0})
+		ps.Velocity = mgl32.Vec3{0, 0, 0}
 		ps.Pitch = pitch
 		ps.Yaw = yaw
 		ps.SetFlag(packet.InputFlagHandledTeleport)
@@ -97,5 +97,18 @@ func (c *Connection) ReplySetActorMotion(pk *packet.SetActorMotion) {
 func (c *Connection) ReplyUpdateBlock(pk *packet.UpdateBlock) {
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
+	})
+}
+
+func (c *Connection) ReplyMovePlayer(pk *packet.MovePlayer) {
+	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
+		return
+	}
+
+	ps := c.state.Player()
+	c.state.Exec(func(q *game.Qx) {
+		ps.Position = pk.Position
+		ps.Pitch, ps.Yaw = pk.Pitch, pk.HeadYaw
+		ps.OnGround = pk.OnGround
 	})
 }

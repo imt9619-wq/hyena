@@ -1,6 +1,7 @@
 package blockmap
 
 import (
+	"github.com/df-mc/dragonfly/server/block"
 	_ "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -8,10 +9,12 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/df-mc/dragonfly/server/block"
 )
-
-var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
+var airRID uint32
+func init() {
+	world.DefaultBlockRegistry.Finalize()
+	airRID = world.BlockRuntimeID(block.Air{})
+}
 
 // BlockMap holds *chunk.Chunk values for chunks within render distance.
 // BlockMap is not safe for use by multiple goroutines.
@@ -123,6 +126,10 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bo
 	localZ := uint8(pos[2]) & 0xF
 	worldY := int16(pos[1])
 
+	if !(c.Range()[0] <= int(worldY) && int(worldY) <= c.Range()[1]){
+		block, exist = world.BlockByRuntimeID(airRID)
+		return
+	}
 	rid := c.Block(localX, worldY, localZ, layer)
 
 	block, exist = world.BlockByRuntimeID(rid)

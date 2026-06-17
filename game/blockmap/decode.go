@@ -57,7 +57,10 @@ func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
 		return
 	}
 	b.currentDim = pk.Dimension
-	dim, _ := world.DimensionByID(int(pk.Dimension))
+	dim, ok := world.DimensionByID(int(pk.Dimension))
+	if !ok{
+		pk.Dimension = 0
+	}
 	r := dim.Range()
 	chunkPos := ProtocolCPosToWorldCPos(pk.Position)
 	if pk.SubChunkCount == protocol.SubChunkRequestModeLimited ||
@@ -72,11 +75,11 @@ func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
 		for i := r[0] >> 4; i <= highest; i++{
 			b.subChunkInQuery[pk.Dimension][pk.Position][int32(i)] = struct{}{}
 		}
-		b.insertChunk(chunkPos, chunk.New(airRID, r))
+		b.insertChunk(chunkPos, chunk.New(world.DefaultBlockRegistry, r))
 		return
 	}
 
-	c, err := chunk.NetworkDecode(airRID, pk.RawPayload, int(pk.SubChunkCount), r)
+	c, err := chunk.NetworkDecode(world.DefaultBlockRegistry, pk.RawPayload, int(pk.SubChunkCount), r)
 	if err != nil {
 		fmt.Printf("Error when networkdecode chunk: %s\n", err)
 		return

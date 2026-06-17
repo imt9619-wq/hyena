@@ -15,6 +15,9 @@ func (m *Movement) getCollision() collisionResult {
 }
 
 func (m *Movement) applyCollision(result collisionResult) {
+	/*defer func ()  {
+		fmt.Printf("%+v\n", result)
+	}()*/
 	if result.nIndices == 0 {
 		return
 	}

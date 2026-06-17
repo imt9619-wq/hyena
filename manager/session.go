@@ -65,6 +65,8 @@ func (s *Session) run() {
 			conn.ReplyUpdateBlock(pk)
 		case *packet.SubChunk:
 			conn.ReplySubChunk(pk)
+		case *packet.MovePlayer:
+			conn.ReplyMovePlayer(pk)
 		default:
 		}
 	}
