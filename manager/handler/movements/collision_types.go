@@ -80,19 +80,17 @@ func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (co
 	var offset float64
 	var collidePlane collidePlane
 	for axis, plane := range delta{
-		if !solid[axis]{
+		if !solid[axis] || plane == 0{
 			continue
 		}
 		if plane > 0{
-			offset = nearby.Min()[axis] - self.Max()[axis]
+			offset = min(nearby.Min()[axis] - self.Max()[axis], plane)
 		}else{
-			offset = nearby.Max()[axis] - self.Min()[axis]
+			offset = max(nearby.Max()[axis] - self.Min()[axis], plane)
 		}
-		if plane != 0{
-			if !outOfPlane(self, nearby.Translate(delta.Mul(offset/plane)), axis){
-				collidePlane.axis, collidePlane.offset = axis, offset 
-				return collidePlane, true
-			}
+		if offset != plane && !outOfPlane(self.Translate(delta.Mul(offset/plane)), nearby, axis){
+			collidePlane.axis, collidePlane.offset = axis, offset 
+			return collidePlane, true
 		}
 	}
 	return collidePlane, false
