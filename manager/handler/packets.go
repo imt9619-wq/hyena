@@ -35,6 +35,8 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 		ps.Velocity = mgl32.Vec3{0, 0, 0}
 		ps.Pitch = pitch
 		ps.Yaw = yaw
+		c.state.BlockMap().UpdateChunkCentre(pk.Position)
+		c.state.BlockMap().RefreshMapWithRenderDistance()
 		ps.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }
@@ -110,5 +112,9 @@ func (c *Connection) ReplyMovePlayer(pk *packet.MovePlayer) {
 		ps.Position = pk.Position
 		ps.Pitch, ps.Yaw = pk.Pitch, pk.HeadYaw
 		ps.OnGround = pk.OnGround
+		ps.Velocity = mgl32.Vec3{}
+		c.state.BlockMap().UpdateChunkCentre(pk.Position)
+		c.state.BlockMap().RefreshMapWithRenderDistance()
+		ps.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }

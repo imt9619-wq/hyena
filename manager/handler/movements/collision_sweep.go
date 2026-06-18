@@ -18,21 +18,11 @@ func (m *Movement) sweptBlockPositions(pBBox cube.BBox, deltas mgl64.Vec3) map[c
 				continue
 			}
 			for _, plane := range floatPlanesBetween(start, start+deltas[axis], &m.scratch.floorPointsScratch) {
-				otherAxes, ok := lineCoordAt(corner, deltas, axis, plane)
+				axisPair, ok := lineCoordAt(corner, deltas, axis, plane)
 				if !ok {
 					break
 				}
-				pos := mgl64.Vec3{}
-				otherIdx := 0
-				for i := range pos {
-					if i == axis {
-						pos[i] = plane
-						continue
-					}
-					pos[i] = otherAxes[otherIdx]
-					otherIdx++
-				}
-				m.scratch.sweepBlocks[Mgl64Vec3ToCubePos(pos)] = struct{}{}
+				m.scratch.sweepBlocks[Mgl64Vec3ToCubePos(axisPair)] = struct{}{}
 			}
 		}
 	}
@@ -65,21 +55,20 @@ func floatPlanesBetween(a, b float64, scratch *[]float64) []float64 {
 	return *scratch
 }
 
-// lineCoordAt returns the coordinates on the other two axes where a movement line
+// lineCoordAt returns the coordinates on the whole vector point where a movement line
 // from origin with direction crosses the given plane on fixedAxis.
-func lineCoordAt(origin, direction mgl64.Vec3, fixedAxis int, plane float64) (mgl64.Vec2, bool) {
+func lineCoordAt(origin, direction mgl64.Vec3, fixedAxis int, plane float64) (mgl64.Vec3, bool) {
 	if direction[fixedAxis] == 0 {
-		return mgl64.Vec2{}, false
+		return mgl64.Vec3{}, false
 	}
 	t := (plane - origin[fixedAxis]) / direction[fixedAxis]
-	var out mgl64.Vec2
-	next := 0
+	var out mgl64.Vec3
 	for axis, val := range origin {
 		if axis == fixedAxis {
+			out[axis] = plane
 			continue
 		}
-		out[next] = val + t*direction[axis]
-		next++
+		out[axis] = val + t*direction[axis]
 	}
 	return out, true
 }

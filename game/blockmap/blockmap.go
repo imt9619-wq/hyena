@@ -1,6 +1,8 @@
 package blockmap
 
 import (
+	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block"
 	_ "github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -96,21 +98,17 @@ func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
 }
 
 // Block implements world.BlockSource.
-func (b *BlockMap) Block(pos cube.Pos) (bl world.Block) {
-	bl, ok := b.block(pos, 0)
-	if !ok {
-		// return invisibleBedrock incase the chunk of pos is not loaded
-		bl = block.InvisibleBedrock{}
-	}
-	return
+func (b *BlockMap) Block(pos cube.Pos) world.Block {
+	bl, _ := b.block(pos, 0)
+	return bl
 }
 
 func (b *BlockMap) SubChunkInQuery()  [3]map[protocol.ChunkPos]map[int32]struct{}{
 	return b.subChunkInQuery
 }
 
-func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bool) {
-	block = nil
+func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool) {
+	bl = nil
 	exist = false
 	if layer > 1 {
 		return
@@ -119,6 +117,8 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bo
 	chunkPos := CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
+		fmt.Printf("Tried to query out of render distance blocks\n")
+		bl = block.InvisibleBedrock{}
 		return
 	}
 
@@ -127,12 +127,13 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (block world.Block, exist bo
 	worldY := int16(pos[1])
 
 	if !(c.Range()[0] <= int(worldY) && int(worldY) <= c.Range()[1]){
-		block, exist = world.BlockByRuntimeID(airRID)
+		fmt.Printf("Tried to query out of range blocks\n")
+		bl, exist = world.BlockByRuntimeID(airRID)
 		return
 	}
 	rid := c.Block(localX, worldY, localZ, layer)
 
-	block, exist = world.BlockByRuntimeID(rid)
+	bl, exist = world.BlockByRuntimeID(rid)
 	return
 }
 

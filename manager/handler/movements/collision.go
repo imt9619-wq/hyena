@@ -1,7 +1,10 @@
 package movements
 
 import (
+	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
@@ -9,15 +12,16 @@ const stepHeight = 0.6
 
 // getCollision resolves movement against blocks for the current velocity.
 func (m *Movement) getCollision() collisionResult {
+	//fmt.Printf("In block: %v\n", m.bboxIntersectsSolid(playerBBox(m.position)))
 	pBBox := playerBBox(m.playerPosBeforeVelocityApply())
 	result := m.probeMovement(pBBox, m.velocity, &m.scratch.footOffsets)
-	return m.tryStepUp(pBBox, result)
+	return result //m.tryStepUp(pBBox, result)
 }
 
 func (m *Movement) applyCollision(result collisionResult) {
-	/*defer func ()  {
-		fmt.Printf("%+v\n", result)
-	}()*/
+	defer func ()  {
+		fmt.Printf("Collision on tick %d: %+v\n", m.state.GStick(), result)
+	}()
 	if result.nIndices == 0 {
 		return
 	}
@@ -26,27 +30,21 @@ func (m *Movement) applyCollision(result collisionResult) {
 	offset := result.offsetOn(axis)
 	// If offset equals velocity, travel is limited by speed rather than collision.
 	if m.velocity[axis] == offset {
+		//fmt.Println("m.velocity[axis] == offset")
 		return
 	}
 
 	start := m.playerPosBeforeVelocityApply()
 	otherAxes, reachable := lineCoordAt(start, m.velocity, axis, start[axis]+offset)
 	if !reachable {
+		//fmt.Println("Not reachable")
 		m.position[axis] = start[axis] + offset
 		return
 	}
 
-	otherIdx := 0
-	for i := range m.position {
-		if i == axis {
-			m.position[i] = start[axis] + offset
-			continue
-		}
-		m.position[i] = otherAxes[otherIdx]
-		otherIdx++
-	}
-
+	m.position = otherAxes
 	for i := 0; i < result.nIndices; i++ {
+		//fmt.Printf("Velocity index on 0: %d\n", result.indices[i])
 		m.velocity[result.indices[i]] = 0
 	}
 }
@@ -74,23 +72,28 @@ func (m *Movement) probeMovement(pBBox cube.BBox, deltas mgl64.Vec3, out *axisOf
 		if !ok {
 			continue
 		}
-		blockBoxes := model.BBox(pos, bm)
+		blockBoxes := bboxes(model, pos, bm)
 		xSolid := model.FaceSolid(pos, xFace, bm)
 		ySolid := model.FaceSolid(pos, yFace, bm)
 		zSolid := model.FaceSolid(pos, zFace, bm)
 		for _, blockBox := range blockBoxes {
-			if xSolid && deltas[0] != 0 {
-				out[0].consider(pBBox.XOffset(blockBox, out[0].offset), blockBox)
+			//fmt.Printf("Checked BBoxes: %+v\n", blockBox)
+			offset, ok := planeOnCollide(pBBox, blockBox, [3]bool{xSolid, ySolid, zSolid}, deltas)
+			if !ok{
+				continue
 			}
-			if ySolid && deltas[1] != 0 {
-				out[1].consider(pBBox.YOffset(blockBox, out[1].offset), blockBox)
-			}
-			if zSolid && deltas[2] != 0 {
-				out[2].consider(pBBox.ZOffset(blockBox, out[2].offset), blockBox)
-			}
+			out[offset.plane].consider(offset.offset, blockBox)
 		}
 	}
 	return m.earliestAxes(out, deltas)
+}
+
+func bboxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BBox{
+	blockBoxes := model.BBox(pos, s)
+	for i, bbox := range blockBoxes{
+		blockBoxes[i] = bbox.Translate(pos.Vec3())
+	}
+	return blockBoxes
 }
 
 func (m *Movement) earliestAxes(offsets *axisOffsets, deltas mgl64.Vec3) collisionResult {
@@ -102,8 +105,10 @@ func (m *Movement) earliestAxes(offsets *axisOffsets, deltas mgl64.Vec3) collisi
 		}
 	}
 	minRatio := min(ratios[0], ratios[1], ratios[2])
-
 	result := collisionResult{offsets: *offsets}
+	if minRatio == 1{
+		return result
+	}
 	for i := range ratios {
 		if ratios[i] == minRatio {
 			result.indices[result.nIndices] = i
@@ -172,7 +177,7 @@ func (m *Movement) bboxIntersectsSolid(pBBox cube.BBox) bool {
 		if !ok {
 			continue
 		}
-		for _, blockBox := range model.BBox(pos, bm) {
+		for _, blockBox := range bboxes(model, pos, bm) {
 			if pBBox.IntersectsWith(blockBox) {
 				return true
 			}

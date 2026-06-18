@@ -1,12 +1,15 @@
 package movements
 
 import (
+	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+// networkOffset can be found at github.com\df-mc\dragonfly\server\player.(ptype).NetworkOffset()
 const (
 	playerHeight        = float64(1.8)
 	playerWidth         = float64(0.6)
@@ -14,6 +17,7 @@ const (
 	sprintMovementMult  = float64(1.3)
 	sprintJumpBoost     = float64(0.2)
 	jumpSpeed           = float64(0.42)
+	networkOffset       = float64(1.621)
 	momentumThreshold   = float64(0.003)
 	groundProbeOffset   = float64(0.003)
 	negligible          = float64(0.0000003)
@@ -23,6 +27,7 @@ type Movement struct {
 	state         *game.GameState
 	position      mgl64.Vec3
 	velocity      mgl64.Vec3
+	vLen 		  float64
 	onGround      bool
 	isrunning     bool
 	isjumping     bool
@@ -48,22 +53,22 @@ func (m *Movement) Tick() {
 	m.applyCollision(m.getCollision())
 	m.setOnGround()
 	m.pasteToPlayerState()
-	/*if m.state.GStick()%10 == 0{
-		fmt.Printf("Movement on tick %d: %+v\n", m.state.GStick(), m)
-	}*/
+	fmt.Printf("Movement on tick %d: %+v\n", m.state.GStick(), m)
+	fmt.Printf("Block pos based on pPos: %v\n\n", Mgl64Vec3ToCubePos(m.position))
 }
 
 func (m *Movement) pasteToPlayerState() {
 	ps := m.state.Player()
 	ps.Velocity = mgl64Vec3Tomgl32Vec3(m.velocity)
-	ps.Position = mgl64Vec3Tomgl32Vec3(m.position)  
+	ps.Position = mgl64Vec3Tomgl32Vec3(m.position.Add(mgl64.Vec3{0, networkOffset, 0}))
 	ps.OnGround = m.onGround 
 }
 
 func (m *Movement) copyPlayerState() {
 	ps := m.state.Player()
 	m.velocity = mgl32Vec3Tomgl64Vec3(ps.Velocity)
-	m.position = mgl32Vec3Tomgl64Vec3(ps.Position)
+	m.vLen = m.velocity.Len()
+	m.position = mgl32Vec3Tomgl64Vec3(ps.Position).Sub(mgl64.Vec3{0, networkOffset, 0})
 	m.onGround = ps.OnGround
 }
 
