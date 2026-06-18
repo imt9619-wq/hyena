@@ -27,7 +27,6 @@ type Movement struct {
 	state         *game.GameState
 	position      mgl64.Vec3
 	velocity      mgl64.Vec3
-	vLen 		  float64
 	onGround      bool
 	isrunning     bool
 	isjumping     bool
@@ -67,7 +66,6 @@ func (m *Movement) pasteToPlayerState() {
 func (m *Movement) copyPlayerState() {
 	ps := m.state.Player()
 	m.velocity = mgl32Vec3Tomgl64Vec3(ps.Velocity)
-	m.vLen = m.velocity.Len()
 	m.position = mgl32Vec3Tomgl64Vec3(ps.Position).Sub(mgl64.Vec3{0, networkOffset, 0})
 	m.onGround = ps.OnGround
 }

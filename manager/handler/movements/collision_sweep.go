@@ -1,6 +1,7 @@
 package movements
 
 import (
+	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -71,4 +72,26 @@ func lineCoordAt(origin, direction mgl64.Vec3, fixedAxis int, plane float64) (mg
 		out[axis] = val + t*direction[axis]
 	}
 	return out, true
+}
+
+func minOffset(offsets [3]float64, delta mgl64.Vec3) iter.Seq2[int, float64] {
+	var radio [3]float64
+	for axis, plane := range delta {
+		if plane == 0 {
+			radio[axis] = 1
+			continue
+		}
+		radio[axis] = offsets[axis] / plane
+	}
+	minRadio := min(radio[0], radio[1], radio[2])
+	return func(yield func(int, float64) bool) {
+		for i, r := range radio {
+			if r != minRadio {
+				continue
+			}
+			if !yield(i, r) {
+				return
+			}
+		}
+	}
 }

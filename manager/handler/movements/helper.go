@@ -60,4 +60,3 @@ func Mgl64Vec3ToCubePos(v mgl64.Vec3) cube.Pos {
 		int(math.Floor(v[2])),
 	}
 }
-

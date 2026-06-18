@@ -1,8 +1,6 @@
 package movements
 
 import (
-	"iter"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -74,60 +72,33 @@ func newCollisionScratch() *collisionScratch {
 }
 
 type collidePlane struct{
-	plane  int
+	axis  int
     offset float64
 }
 
 func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (collidePlane, bool){
-	var offsets [3]float64
+	var offset float64
 	var collidePlane collidePlane
-	if !(solid[0] || solid[1] || solid[2]){
-		return collidePlane, false
-	}
 	for axis, plane := range delta{
-		if plane == 0 && outOfPlane(self, nearby, axis){
-			return collidePlane, false
+		if !solid[axis]{
+			continue
 		}
 		if plane > 0{
-			offsets[axis] = nearby.Min()[axis] - self.Max()[axis]
+			offset = nearby.Min()[axis] - self.Max()[axis]
 		}else{
-			offsets[axis] = nearby.Max()[axis] - self.Min()[axis]
+			offset = nearby.Max()[axis] - self.Min()[axis]
+		}
+		if plane != 0{
+			if !outOfPlane(self, nearby.Translate(delta.Mul(offset/plane)), axis){
+				collidePlane.axis, collidePlane.offset = axis, offset 
+				return collidePlane, true
+			}
 		}
 	}
-	for axis := range minOffset(offsets, delta){
-		if delta[axis] == 0{
-			return collidePlane, false
-		}
-		collidePlane.offset = offsets[axis]
-		collidePlane.plane = axis
-		return collidePlane, true
-	}
-
 	return collidePlane, false
 }
 
-func minOffset(offsets [3]float64, delta mgl64.Vec3) iter.Seq2[int, float64]{
-	var radio [3]float64
-	for axis, plane := range delta{
-		if plane == 0{
-			radio[axis] = 1
-			continue
-		}
-		radio[axis] = offsets[axis]/plane
-	}
-	minRadio := min(radio[0], radio[1], radio[2])
-	return func(yield func(int, float64) bool) {
-		for i, radio := range radio{
-			if radio != minRadio{
-				continue
-			}
-			if !yield(i, radio){
-				return 
-			}
-		}
-	}
-}
-
 func outOfPlane(self, nearby cube.BBox, axis int) bool{
-	return self.Max()[axis] <= nearby.Min()[axis] || self.Min()[axis] >= nearby.Max()[axis]
+	return self.Max()[(axis+2)%3] <= nearby.Min()[(axis+2)%3] || self.Min()[(axis+2)%3] >= nearby.Max()[(axis+2)%3] ||
+	self.Max()[(axis+4)%3] <= nearby.Min()[(axis+4)%3] || self.Min()[(axis+4)%3] >= nearby.Max()[(axis+4)%3]
 }

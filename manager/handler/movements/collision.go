@@ -82,7 +82,7 @@ func (m *Movement) probeMovement(pBBox cube.BBox, deltas mgl64.Vec3, out *axisOf
 			if !ok{
 				continue
 			}
-			out[offset.plane].consider(offset.offset, blockBox)
+			out[offset.axis].consider(offset.offset, blockBox)
 		}
 	}
 	return m.earliestAxes(out, deltas)
@@ -97,23 +97,17 @@ func bboxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BB
 }
 
 func (m *Movement) earliestAxes(offsets *axisOffsets, deltas mgl64.Vec3) collisionResult {
-	var ratios [3]float64
-	for i := range ratios {
-		ratios[i] = 1
-		if deltas[i] != 0 {
-			ratios[i] = offsets[i].offset / deltas[i]
-		}
-	}
-	minRatio := min(ratios[0], ratios[1], ratios[2])
 	result := collisionResult{offsets: *offsets}
-	if minRatio == 1{
-		return result
+	var o [3]float64
+	for i := range o {
+		o[i] = offsets[i].offset
 	}
-	for i := range ratios {
-		if ratios[i] == minRatio {
-			result.indices[result.nIndices] = i
-			result.nIndices++
+	for axis, ratio := range minOffset(o, deltas) {
+		if ratio == 1 {
+			return result
 		}
+		result.indices[result.nIndices] = axis
+		result.nIndices++
 	}
 	return result
 }
