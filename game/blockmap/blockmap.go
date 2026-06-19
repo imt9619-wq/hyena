@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
@@ -32,12 +33,12 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	bm := &BlockMap{
 		chunkRadius: 15,
 	}
-	bm.chunkCentre = Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
-	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, radiusToChunkCount(bm.chunkRadius))
+	bm.chunkCentre = utils.Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
+	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, utils.RadiusToChunkCount(bm.chunkRadius))
 	for i := range bm.subChunkInQuery{
 		bm.subChunkInQuery[i] = make(
 			map[protocol.ChunkPos]map[int32]struct{}, 
-			radiusToChunkCount(bm.chunkRadius))
+			utils.RadiusToChunkCount(bm.chunkRadius))
 	}
 	return bm
 }
@@ -47,7 +48,7 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 // chunk(unloaded chunk), a levelchunk packet of that chunk should be
 // received to load back the chunk
 func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
-	chunkCentre := Mgl32ToWorldChunkPos(pos)
+	chunkCentre := utils.Mgl32ToWorldChunkPos(pos)
 	if b.chunkCentre == chunkCentre {
 		return
 	}
@@ -86,14 +87,14 @@ func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
 }
 
 func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
-	chunkPos := ProtocolPosToWorldChunkPos(pos)
+	chunkPos := utils.ProtocolPosToWorldChunkPos(pos)
 	chunk, ok := b.chunkMap[chunkPos]
 	if !ok {
 		return
 	}
-	x := uint8(LastFourBit(pos.X()))
+	x := uint8(utils.LastFourBit(pos.X()))
 	y := int16(pos[1])
-	z := uint8(LastFourBit(pos.Z()))
+	z := uint8(utils.LastFourBit(pos.Z()))
 	chunk.SetBlock(x, y, z, layer, block)
 }
 
@@ -114,7 +115,7 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool)
 		return
 	}
 
-	chunkPos := CubePosToChunkPos(pos)
+	chunkPos := utils.CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
 		fmt.Printf("Tried to query out of render distance blocks\n")

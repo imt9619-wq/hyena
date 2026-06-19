@@ -1,11 +1,11 @@
 package movements
 
 import (
-	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/utils"
 )
 
 // sweptBlockPositions returns block positions the player bbox crosses while moving by deltas.
@@ -18,12 +18,12 @@ func (m *Movement) sweptBlockPositions(pBBox cube.BBox, deltas mgl64.Vec3) map[c
 			if deltas[axis] == 0 {
 				continue
 			}
-			for _, plane := range floatPlanesBetween(start, start+deltas[axis], &m.scratch.floorPointsScratch) {
-				axisPair, ok := lineCoordAt(corner, deltas, axis, plane)
+			for plane := range utils.FloorFloatBetween(start, start+deltas[axis]) {
+				axisPair, ok := utils.LineCoordAt(corner, deltas, axis, plane)
 				if !ok {
 					break
 				}
-				m.scratch.sweepBlocks[Mgl64Vec3ToCubePos(axisPair)] = struct{}{}
+				m.scratch.sweepBlocks[cube.PosFromVec3(axisPair)] = struct{}{}
 			}
 		}
 	}
@@ -44,54 +44,3 @@ func (m *Movement) blockPositionsInBBox(bbox cube.BBox) []cube.Pos {
 	return m.scratch.blockPosScratch
 }
 
-// floatPlanesBetween returns each integer boundary crossed between a and b.
-func floatPlanesBetween(a, b float64, scratch *[]float64) []float64 {
-	if a > b {
-		a, b = b, a
-	}
-	*scratch = (*scratch)[:0]
-	for i := math.Floor(a); i <= b; i++ {
-		*scratch = append(*scratch, i)
-	}
-	return *scratch
-}
-
-// lineCoordAt returns the coordinates on the whole vector point where a movement line
-// from origin with direction crosses the given plane on fixedAxis.
-func lineCoordAt(origin, direction mgl64.Vec3, fixedAxis int, plane float64) (mgl64.Vec3, bool) {
-	if direction[fixedAxis] == 0 {
-		return mgl64.Vec3{}, false
-	}
-	t := (plane - origin[fixedAxis]) / direction[fixedAxis]
-	var out mgl64.Vec3
-	for axis, val := range origin {
-		if axis == fixedAxis {
-			out[axis] = plane
-			continue
-		}
-		out[axis] = val + t*direction[axis]
-	}
-	return out, true
-}
-
-func minOffset(offsets [3]float64, delta mgl64.Vec3) iter.Seq2[int, float64] {
-	var radio [3]float64
-	for axis, plane := range delta {
-		if plane == 0 {
-			radio[axis] = 1
-			continue
-		}
-		radio[axis] = offsets[axis] / plane
-	}
-	minRadio := min(radio[0], radio[1], radio[2])
-	return func(yield func(int, float64) bool) {
-		for i, r := range radio {
-			if r != minRadio {
-				continue
-			}
-			if !yield(i, r) {
-				return
-			}
-		}
-	}
-}

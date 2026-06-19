@@ -6,6 +6,7 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/utils"
 )
 
 const stepHeight = 0.6
@@ -13,20 +14,21 @@ const stepHeight = 0.6
 // getCollision resolves movement against blocks for the current velocity.
 func (m *Movement) getCollision() collisionResult {
 	//fmt.Printf("In block: %v\n", m.bboxIntersectsSolid(playerBBox(m.position)))
-	pBBox := playerBBox(m.playerPosBeforeVelocityApply())
+	pBBox := utils.PlayerBBox(m.playerPosBeforeVelocityApply())
 	result := m.probeMovement(pBBox, m.velocity, &m.scratch.footOffsets)
-	return result //m.tryStepUp(pBBox, result)
+	//result = m.tryStepUp(pBBox, result)
+	return result
 }
 
 func (m *Movement) applyCollision(result collisionResult) {
 	defer func ()  {
 		fmt.Printf("Collision on tick %d: %+v\n", m.state.GStick(), result)
 	}()
-	if result.nIndices == 0 {
+	if len(result.hittedAxis) == 0 {
 		return
 	}
 
-	axis := result.indices[0]
+	axis := result.oneExistAxis()
 	offset := result.offsetOn(axis)
 	// If offset equals velocity, travel is limited by speed rather than collision.
 	if m.velocity[axis] == offset {
@@ -35,7 +37,7 @@ func (m *Movement) applyCollision(result collisionResult) {
 	}
 
 	start := m.playerPosBeforeVelocityApply()
-	otherAxes, reachable := lineCoordAt(start, m.velocity, axis, start[axis]+offset)
+	otherAxes, reachable := utils.LineCoordAt(start, m.velocity, axis, start[axis]+offset)
 	if !reachable {
 		//fmt.Println("Not reachable")
 		m.position[axis] = start[axis] + offset
@@ -43,15 +45,15 @@ func (m *Movement) applyCollision(result collisionResult) {
 	}
 
 	m.position = otherAxes
-	for i := 0; i < result.nIndices; i++ {
+	for axis := range result.hittedAxis {
 		//fmt.Printf("Velocity index on 0: %d\n", result.indices[i])
-		m.velocity[result.indices[i]] = 0
+		m.velocity[axis] = 0
 	}
 }
 
 func (m *Movement) probeMovement(pBBox cube.BBox, deltas mgl64.Vec3, out *axisOffsets) collisionResult {
 	out.reset(deltas)
-	if deltaIsZero(deltas) {
+	if utils.DeltaIsZero(deltas) {
 		return collisionResult{offsets: *out}
 	}
 
@@ -77,7 +79,6 @@ func (m *Movement) probeMovement(pBBox cube.BBox, deltas mgl64.Vec3, out *axisOf
 		ySolid := model.FaceSolid(pos, yFace, bm)
 		zSolid := model.FaceSolid(pos, zFace, bm)
 		for _, blockBox := range blockBoxes {
-			//fmt.Printf("Checked BBoxes: %+v\n", blockBox)
 			offset, ok := planeOnCollide(pBBox, blockBox, [3]bool{xSolid, ySolid, zSolid}, deltas)
 			if !ok{
 				continue
@@ -97,33 +98,27 @@ func bboxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BB
 }
 
 func (m *Movement) earliestAxes(offsets *axisOffsets, deltas mgl64.Vec3) collisionResult {
-	result := collisionResult{offsets: *offsets}
-	var o [3]float64
-	for i := range o {
-		o[i] = offsets[i].offset
-	}
-	for axis, ratio := range minOffset(o, deltas) {
+	result := collisionResult{offsets: *offsets, hittedAxis: make(map[int]struct{}, 3)}
+	for axis, ratio := range utils.MinOffset(offsets.offsetArr(), deltas) {
 		if ratio == 1 {
 			return result
 		}
-		result.indices[result.nIndices] = axis
-		result.nIndices++
+		result.hittedAxis[axis] = struct{}{}
 	}
 	return result
 }
 
 func (m *Movement) tryStepUp(pBBox cube.BBox, result collisionResult) collisionResult {
-	if !(m.onGround && m.velocity[1] == 0 && !result.hitsAxis(1)) {
+	if _, ok := result.hittedAxis[1]; !(m.onGround && m.velocity[1] == 0 && !ok) {
 		return result
 	}
-	if result.nIndices == 0 {
+	if len(result.hittedAxis) == 0 {
 		return result
 	}
 
 	var height float64
 	allTravelLimited := true
-	for i := 0; i < result.nIndices; i++ {
-		axis := result.indices[i]
+	for axis := range result.hittedAxis {
 		offset := result.offsetOn(axis)
 		if m.velocity[axis] == offset {
 			continue
@@ -150,12 +145,11 @@ func (m *Movement) tryStepUp(pBBox cube.BBox, result collisionResult) collisionR
 	}
 
 	stepResult := m.probeMovement(raisedBBox, m.velocity, &m.scratch.stepOffsets)
-	for i := 0; i < result.nIndices; i++ {
-		axis := result.indices[i]
+	for axis := range result.hittedAxis{
 		if m.velocity[axis] == result.offsetOn(axis) {
 			continue
 		}
-		if isCloserToZero(stepResult.offsetOn(axis), result.offsetOn(axis)) <= 0 {
+		if utils.IsCloserToZero(stepResult.offsetOn(axis), result.offsetOn(axis)) <= 0 {
 			return result
 		}
 	}

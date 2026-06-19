@@ -3,8 +3,7 @@ package handler
 import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/imt9619-wq/hyena/game/blockmap"
-	"github.com/imt9619-wq/hyena/manager/handler/movements"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -27,7 +26,7 @@ func (c *Connection) ReplyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
-	yaw, pitch := movements.RotationToPitchAndYaw(pk.Rotation)
+	yaw, pitch := utils.RotationToPitchAndYaw(pk.Rotation)
 	ps := c.state.Player()
 
 	c.state.Exec(func(q *game.Qx) {
@@ -60,7 +59,7 @@ func (c *Connection) ReplySubChunk(pk *packet.SubChunk) {
 }
 
 func (c *Connection) ReplyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
-	posInMgl32 := blockmap.ProtocolPosToMgl32Vec3(pk.Position)
+	posInMgl32 := utils.ProtocolPosToMgl32Vec3(pk.Position)
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().UpdateChunkRadius(int32(pk.Radius))
 		c.state.BlockMap().UpdateChunkCentre(posInMgl32)

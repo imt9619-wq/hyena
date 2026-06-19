@@ -7,6 +7,7 @@ import (
 
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -18,13 +19,13 @@ func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
 	r := dim.Range()
 	buf := bytes.NewBuffer(nil)
 	for _, entry := range pk.SubChunkEntries {
-		entryPos := subChunkPosWithOffset(center, entry.Offset)
-		if _, ok := b.subChunkInQuery[pk.Dimension][subChunkPosToChunkPos(entryPos)][entryPos[1]]; !ok {
+		entryPos := utils.SubChunkPosWithOffset(center, entry.Offset)
+		if _, ok := b.subChunkInQuery[pk.Dimension][utils.SubChunkPosToChunkPos(entryPos)][entryPos[1]]; !ok {
 			continue
 		}
-		delete(b.subChunkInQuery[pk.Dimension][subChunkPosToChunkPos(entryPos)], entryPos[1])
-		if len(b.subChunkInQuery[pk.Dimension][subChunkPosToChunkPos(entryPos)]) == 0{
-			delete(b.subChunkInQuery[pk.Dimension], subChunkPosToChunkPos(entryPos))
+		delete(b.subChunkInQuery[pk.Dimension][utils.SubChunkPosToChunkPos(entryPos)], entryPos[1])
+		if len(b.subChunkInQuery[pk.Dimension][utils.SubChunkPosToChunkPos(entryPos)]) == 0{
+			delete(b.subChunkInQuery[pk.Dimension], utils.SubChunkPosToChunkPos(entryPos))
 		}
 		if !(entry.Result == protocol.SubChunkResultSuccess || entry.Result == protocol.SubChunkResultSuccessAllAir) {
 			continue
@@ -62,7 +63,7 @@ func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
 		pk.Dimension = 0
 	}
 	r := dim.Range()
-	chunkPos := ProtocolCPosToWorldCPos(pk.Position)
+	chunkPos := utils.ProtocolCPosToWorldCPos(pk.Position)
 	if pk.SubChunkCount == protocol.SubChunkRequestModeLimited ||
 		pk.SubChunkCount == protocol.SubChunkRequestModeLimitless {		
 		highest := r[1]>>4

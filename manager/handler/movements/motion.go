@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -73,7 +74,7 @@ func (m *Movement) StopJumping() {
 func (m *Movement) slipperiness() float64 {
 	slipperiness := float64(1.0)
 	if m.onGround {
-		slipperiness = defaultSlipperiness
+		slipperiness = utils.DefaultSlipperiness
 	}
 	return slipperiness
 }
@@ -90,10 +91,10 @@ func (m *Movement) applyHorizontalMovement() {
 	friction := m.friction()
 	mx := m.velocity[0] * friction
 	mz := m.velocity[2] * friction
-	if math.Abs(mx) < momentumThreshold {
+	if math.Abs(mx) < utils.MomentumThreshold {
 		mx = 0
 	}
-	if math.Abs(mz) < momentumThreshold {
+	if math.Abs(mz) < utils.MomentumThreshold {
 		mz = 0
 	}
 	m.velocity[0] = mx
@@ -102,7 +103,7 @@ func (m *Movement) applyHorizontalMovement() {
 
 func (m *Movement) jump() {
 	if m.onGround {
-		m.velocity[1] = jumpSpeed
+		m.velocity[1] = utils.JumpSpeed
 	}
 	m.state.Player().SetFlag(packet.InputFlagJumping)
 	m.state.Player().SetFlag(packet.InputFlagJumpCurrentRaw)
@@ -116,18 +117,18 @@ func (m *Movement) run() {
 	cosD := math.Cos(yawRad)
 
 	if m.onGround {
-		accel := 0.1 * sprintMovementMult * math.Pow(0.6/slipperiness, 3)
+		accel := 0.1 * utils.SprintMovementMult * math.Pow(0.6/slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 	} else {
-		airAccel := 0.02 * sprintMovementMult
+		airAccel := 0.02 * utils.SprintMovementMult
 		m.velocity[0] += airAccel * sinD
 		m.velocity[2] += airAccel * cosD
 	}
 
 	if m.isjumping && m.onGround {
-		m.velocity[0] += sprintJumpBoost * sinD
-		m.velocity[2] += sprintJumpBoost * cosD
+		m.velocity[0] += utils.SprintJumpBoost * sinD
+		m.velocity[2] += utils.SprintJumpBoost * cosD
 	}
 
 	m.state.Player().SetFlag(packet.InputFlagSprinting)

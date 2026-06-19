@@ -1,4 +1,4 @@
-package blockmap
+package utils
 
 import (
 	"math"
@@ -34,11 +34,11 @@ func ShiftBackFourBits(x int32) int32 {
 	return x >> 4
 }
 
-func subChunkPosWithOffset(pos protocol.SubChunkPos, offset protocol.SubChunkOffset) protocol.SubChunkPos {
+func SubChunkPosWithOffset(pos protocol.SubChunkPos, offset protocol.SubChunkOffset) protocol.SubChunkPos {
 	return protocol.SubChunkPos{pos[0] + int32(offset[0]), pos[1] + int32(offset[1]), pos[2] + int32(offset[2])}
 }
 
-func subChunkPosToChunkPos(pos protocol.SubChunkPos) protocol.ChunkPos{
+func SubChunkPosToChunkPos(pos protocol.SubChunkPos) protocol.ChunkPos{
 	return protocol.ChunkPos{pos[0], pos[2]}
 }
 
@@ -46,7 +46,7 @@ func ProtocolCPosToWorldCPos(pPos protocol.ChunkPos) world.ChunkPos {
 	return world.ChunkPos([]int32{pPos.X(), pPos.Z()})
 }
 
-func radiusToChunkCount(r int32) int32 {
+func RadiusToChunkCount(r int32) int32 {
 	return int32(math.Pow(float64(r*2+1), 2))
 }
 

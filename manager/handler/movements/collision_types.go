@@ -3,14 +3,8 @@ package movements
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/utils"
 )
-
-// surround hold data that respresent the player current bbox surrounding information so other 
-// methods may utilitize it
-type surround struct {
-	positive
-	negative 
-}
 
 // axisOffset is the closest allowed travel distance on one axis before hitting a block.
 type axisOffset struct {
@@ -19,7 +13,7 @@ type axisOffset struct {
 }
 
 func (o *axisOffset) consider(candidate float64, block cube.BBox) {
-	if isCloserToZero(candidate, o.offset) > 0 {
+	if utils.IsCloserToZero(candidate, o.offset) > 0 {
 		o.blocks = o.blocks[:0]
 		o.offset = candidate
 	}
@@ -30,6 +24,14 @@ func (o *axisOffset) consider(candidate float64, block cube.BBox) {
 
 // axisOffsets holds per-axis collision results for a single movement probe.
 type axisOffsets [3]axisOffset
+
+func (a *axisOffsets) offsetArr() [3]float64{
+	var arr [3]float64
+	for i, offset := range a{
+		arr[i] = offset.offset
+	}
+	return arr
+}
 
 func (a *axisOffsets) reset(deltas mgl64.Vec3) {
 	for i := range a {
@@ -42,17 +44,14 @@ func (a *axisOffsets) reset(deltas mgl64.Vec3) {
 // and which axis(es) would be hit first when moving by deltas.
 type collisionResult struct {
 	offsets   axisOffsets
-	indices   [3]int
-	nIndices  int
+	hittedAxis map[int]struct{}
 }
 
-func (r collisionResult) hitsAxis(axis int) bool {
-	for i := 0; i < r.nIndices; i++ {
-		if r.indices[i] == axis {
-			return true
-		}
+func (r collisionResult) oneExistAxis() int{
+	for axis := range r.hittedAxis{
+		return axis
 	}
-	return false
+	return -1
 }
 
 func (r collisionResult) offsetOn(axis int) float64 {
@@ -67,7 +66,6 @@ func (r collisionResult) blocksOn(axis int) []cube.BBox {
 type collisionScratch struct {
 	sweepBlocks        map[cube.Pos]struct{}
 	blockPosScratch    []cube.Pos
-	floorPointsScratch []float64
 	footOffsets        axisOffsets
 	stepOffsets        axisOffsets
 }
@@ -100,12 +98,12 @@ func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (co
 			offset = max(nearby.Max()[axis] - self.Min()[axis], plane)
 		}
 		
-		if offset != plane && !outOfPlane(self.Translate(delta.Mul(offset/plane)), nearby, axis){
+		if offset != plane && !utils.OutOfPlane(self.Translate(delta.Mul(offset/plane)), nearby, axis){
 			if offset/plane < radio{
 				collidePlane.axis, collidePlane.offset = axis, offset
 				radio = offset/plane
 				exist = true
-				if mgl64.FloatEqualThreshold(collidePlane.offset, 0, negligible){
+				if mgl64.FloatEqualThreshold(collidePlane.offset, 0, utils.Negligible){
 					collidePlane.offset = 0
 					break
 				}
@@ -113,9 +111,4 @@ func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (co
 		}
 	}
 	return collidePlane, exist
-}
-
-func outOfPlane(self, nearby cube.BBox, axis int) bool{
-	return self.Max()[(axis+2)%3] <= nearby.Min()[(axis+2)%3] || self.Min()[(axis+2)%3] >= nearby.Max()[(axis+2)%3] ||
-	self.Max()[(axis+4)%3] <= nearby.Min()[(axis+4)%3] || self.Min()[(axis+4)%3] >= nearby.Max()[(axis+4)%3]
 }
