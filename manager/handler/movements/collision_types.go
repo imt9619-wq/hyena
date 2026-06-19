@@ -1,11 +1,16 @@
 package movements
 
 import (
-	"fmt"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 )
+
+// surround hold data that respresent the player current bbox surrounding information so other 
+// methods may utilitize it
+type surround struct {
+	positive
+	negative 
+}
 
 // axisOffset is the closest allowed travel distance on one axis before hitting a block.
 type axisOffset struct {
@@ -90,17 +95,20 @@ func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (co
 		offset = plane
 		if plane > 0 && self.Max()[axis] <= nearby.Min()[axis]{
 			offset = min(nearby.Min()[axis] - self.Max()[axis], plane)
-			fmt.Printf("offset %d: %v ", axis, offset)
 		}
 		if plane < 0 && self.Min()[axis] >= nearby.Max()[axis]{
 			offset = max(nearby.Max()[axis] - self.Min()[axis], plane)
-			fmt.Printf("offset %d: %v ", axis, offset)
 		}
+		
 		if offset != plane && !outOfPlane(self.Translate(delta.Mul(offset/plane)), nearby, axis){
 			if offset/plane < radio{
 				collidePlane.axis, collidePlane.offset = axis, offset
 				radio = offset/plane
 				exist = true
+				if mgl64.FloatEqualThreshold(collidePlane.offset, 0, negligible){
+					collidePlane.offset = 0
+					break
+				}
 			}
 		}
 	}

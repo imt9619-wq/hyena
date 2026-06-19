@@ -11,7 +11,7 @@ import (
 // sweptBlockPositions returns block positions the player bbox crosses while moving by deltas.
 func (m *Movement) sweptBlockPositions(pBBox cube.BBox, deltas mgl64.Vec3) map[cube.Pos]struct{} {
 	clear(m.scratch.sweepBlocks)
-	corners := pBBox.Corners()
+	corners := pBBox.Grow(0.2).Corners()
 
 	for _, corner := range corners {
 		for axis, start := range corner {

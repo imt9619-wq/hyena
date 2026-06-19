@@ -18,10 +18,10 @@ const (
 	sprintMovementMult  = float64(1.3)
 	sprintJumpBoost     = float64(0.2)
 	jumpSpeed           = float64(0.42)
-	networkOffset       = float64(1.621)
+	networkOffset       = float64(1.62)
 	momentumThreshold   = float64(0.003)
 	groundProbeOffset   = float64(0.003)
-	negligible          = float64(0.0000003)
+	negligible          = float64(0.003)
 )
 
 type Movement struct {
