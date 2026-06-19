@@ -1,6 +1,8 @@
 package movements
 
 import (
+	"fmt"
+
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -79,21 +81,30 @@ type collidePlane struct{
 func planeOnCollide(self, nearby cube.BBox, solid [3]bool, delta mgl64.Vec3) (collidePlane, bool){
 	var offset float64
 	var collidePlane collidePlane
+	radio := mgl64.MaxValue
+	exist := false
 	for axis, plane := range delta{
 		if !solid[axis] || plane == 0{
 			continue
 		}
-		if plane > 0{
+		offset = plane
+		if plane > 0 && self.Max()[axis] <= nearby.Min()[axis]{
 			offset = min(nearby.Min()[axis] - self.Max()[axis], plane)
-		}else{
+			fmt.Printf("offset %d: %v ", axis, offset)
+		}
+		if plane < 0 && self.Min()[axis] >= nearby.Max()[axis]{
 			offset = max(nearby.Max()[axis] - self.Min()[axis], plane)
+			fmt.Printf("offset %d: %v ", axis, offset)
 		}
 		if offset != plane && !outOfPlane(self.Translate(delta.Mul(offset/plane)), nearby, axis){
-			collidePlane.axis, collidePlane.offset = axis, offset 
-			return collidePlane, true
+			if offset/plane < radio{
+				collidePlane.axis, collidePlane.offset = axis, offset
+				radio = offset/plane
+				exist = true
+			}
 		}
 	}
-	return collidePlane, false
+	return collidePlane, exist
 }
 
 func outOfPlane(self, nearby cube.BBox, axis int) bool{

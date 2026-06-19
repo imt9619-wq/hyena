@@ -127,7 +127,7 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool)
 	worldY := int16(pos[1])
 
 	if !(c.Range()[0] <= int(worldY) && int(worldY) <= c.Range()[1]){
-		fmt.Printf("Tried to query out of range blocks\n")
+		fmt.Printf("Tried to query out of range blocks Y: %d\n", worldY)
 		bl, exist = world.BlockByRuntimeID(airRID)
 		return
 	}

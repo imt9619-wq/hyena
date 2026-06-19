@@ -54,7 +54,7 @@ func (m *Movement) Tick() {
 	m.applyCollision(m.getCollision())
 	m.setOnGround()
 	m.pasteToPlayerState()
-	fmt.Printf("Movement on tick %d: %+v\n", m.state.GStick(), m)
+	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGrond: %v}\n", m.state.GStick(), m.position, m.velocity, m.onGround)
 	fmt.Printf("Time used for tick %d: %0.2fms\n", m.state.GStick(), time.Since(now).Seconds()*1000)
 	fmt.Printf("Block pos based on pPos: %v\n\n", Mgl64Vec3ToCubePos(m.position))
 }
