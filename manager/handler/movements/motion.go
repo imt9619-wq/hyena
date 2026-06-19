@@ -3,6 +3,7 @@ package movements
 import (
 	"math"
 
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -27,6 +28,9 @@ func (m *Movement) applyGravity() {
 
 func (m *Movement) applyVelocity() {
 	m.position = m.position.Add(m.velocity)
+	if mgl64.FloatEqualThreshold(m.position[1], float64(m.state.BlockMap().Dimension().Range()[0]), utils.Negligible){
+		m.position[1] = float64(m.state.BlockMap().Dimension().Range()[0])
+	}
 }
 
 func (m *Movement) StartRunning() {

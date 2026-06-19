@@ -58,7 +58,6 @@ func (m *Movement) pasteToPlayerState() {
 func (m *Movement) copyPlayerState() {
 	ps := m.state.Player()
 	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(ps.Velocity)
-	m.setMoveVector(m.velocity)
 	m.position = utils.Mgl32Vec3Tomgl64Vec3(ps.Position).Sub(mgl64.Vec3{0, utils.NetworkOffset, 0})
 
 	m.onGround = ps.OnGround
@@ -79,6 +78,7 @@ func (m *Movement) setMoveVector(v mgl64.Vec3){
 // checkIfBlocked will set certain moveVector axis(except Y) to 0 if on that axis the player movement is blocked
 // (like right in front of the wall)
 func (m *Movement) checkIfBlocked() {
+	m.setMoveVector(m.velocity)
 	halfHori := utils.HoriProbeOffset / 2
 	for axis, dir := range m.moveVector{
 		if axis == 1 || dir == 0{
@@ -86,7 +86,7 @@ func (m *Movement) checkIfBlocked() {
 		}
 		bbpos := m.position
 		bbpos[axis] += (utils.PlayerWidth/2 + halfHori) * float64(m.moveVector[axis])
-		otherAxe := (2*axis+2)%6 // 0 if axis is 2, 2 if axis is 0
+		otherAxe := (axis%2)+1 // 1 if axis is 2, 2 if axis is 1
         if m.bboxIntersectsSolid(cube.Box(
 			bbpos[0]-halfHori,
 			bbpos[1]+utils.PlayerHeight,

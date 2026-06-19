@@ -43,6 +43,11 @@ func NewBlockMap(conn *minecraft.Conn) *BlockMap {
 	return bm
 }
 
+func (b *BlockMap) Dimension() world.Dimension{
+	dim, _ := world.DimensionByID(int(b.currentDim))
+	return dim
+}
+
 // When a player moved to a new chunk, chunk outside of their render
 // chunk distance will be deleted, when they get back in to the deleted
 // chunk(unloaded chunk), a levelchunk packet of that chunk should be
@@ -72,7 +77,6 @@ func (b *BlockMap) RefreshMapWithRenderDistance() {
 		}
 		clear(b.subChunkInQuery[i])
 	}
-	
 }
 
 func (b *BlockMap) UpdateChunkRadius(r int32) {
