@@ -11,6 +11,16 @@ import (
 
 const stepHeight = 0.6
 
+func (m *Movement) simCollision(){
+	m.stateInWorld.Position = m.playerPosBeforeVelocityApply()
+	m.stateInWorld.Velocity = m.velocity
+	m.stateInWorld.AABB = utils.PlayerBBox(m.playerPosBeforeVelocityApply())
+	
+	m.stateInWorld.SimState()
+	m.velocity = m.stateInWorld.Velocity 
+	m.position = m.stateInWorld.Position
+}
+
 // getCollision resolves movement against blocks for the current velocity.
 func (m *Movement) getCollision() collisionResult {
 	//fmt.Printf("In block: %v\n", m.bboxIntersectsSolid(playerBBox(m.position)))
