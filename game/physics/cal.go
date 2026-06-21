@@ -3,6 +3,7 @@ package physics
 import (
 	"fmt"
 	"iter"
+	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
@@ -63,4 +64,21 @@ func bboxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BB
 		blockBoxes[i] = bbox.Translate(pos.Vec3())
 	}
 	return blockBoxes
+}
+
+func blockPositionsInBBox(bbox cube.BBox) iter.Seq[cube.Pos]{
+	min := bbox.Min()
+	max := bbox.Max()
+	
+	return func(yield func(cube.Pos) bool) {
+		for x := int(math.Floor(min[0])); x <= int(math.Floor(max[0])); x++ {
+			for y := int(math.Floor(min[1])); y <= int(math.Floor(max[1])); y++ {
+				for z := int(math.Floor(min[2])); z <= int(math.Floor(max[2])); z++ {
+					if !yield(cube.Pos{x, y, z}){
+						return 
+					}
+				}
+			}
+		}
+	}
 }

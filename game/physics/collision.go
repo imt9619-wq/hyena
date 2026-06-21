@@ -1,8 +1,6 @@
 package physics
 
 import (
-	"fmt"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game/blockmap"
@@ -14,8 +12,9 @@ type StateInWorld struct{
     Position mgl64.Vec3
     AABB     cube.BBox
 
-    world   *blockmap.BlockMap
-    scratch *phyScratch
+    moveVector [3]int
+    world      *blockmap.BlockMap
+    scratch    *phyScratch
 }
 
 func NewStateInWorld(world *blockmap.BlockMap) *StateInWorld{
@@ -28,8 +27,21 @@ func NewStateInWorld(world *blockmap.BlockMap) *StateInWorld{
 // simState will use the given aabb, velocity, position and simulate the newState which the newState will 
 // replace the old one
 func (s *StateInWorld) SimState(){
+	s.setMoveVector()
 	s.getOffset()
 	s.simOffset()
+}
+
+func (s *StateInWorld) setMoveVector(){
+	for axis, plane := range s.Velocity{
+		if plane == 0{
+			s.moveVector[axis] = 0
+		}else if plane > 0{
+			s.moveVector[axis] = 1
+		}else{
+			s.moveVector[axis] = -1
+		}
+	}
 }
 
 func (s *StateInWorld) simOffset(){
@@ -37,13 +49,12 @@ func (s *StateInWorld) simOffset(){
 		return
 	}
 	offsets := s.scratch.offsets.offsetArr()
-	fmt.Println(s.Velocity)
-	for axis, offset := range offsets{
-		if offset == 0 && s.Velocity[axis] != 0 && len(s.scratch.offsets[axis].blocks) == 0{
+	for axis := range s.Velocity{
+		if s.isHittingWallOnAxis(axis){
 			s.Velocity[axis] = 0
 		}
 	}
-	fmt.Println(s.Velocity)	
+
 	var radio float64
 	deltas := s.Velocity
 	for axis, minRadio := range utils.MinOffset(offsets, deltas){
@@ -52,7 +63,6 @@ func (s *StateInWorld) simOffset(){
 			s.Velocity[axis] = 0	
 		}	
 	}
-	fmt.Println(s.Position.Add(deltas.Mul(radio)))
 	s.Position = s.Position.Add(deltas.Mul(radio))
 }
 
@@ -84,4 +94,37 @@ func (s *StateInWorld) getOffset(){
 			s.scratch.offsets.considerOffsets(s.AABB, blockBox, [3]bool{xSolid, ySolid, zSolid}, s.Velocity)
 		}
 	}
+}
+
+func (s StateInWorld) isHittingWallOnAxis(axis int) bool{
+	if axis == 1 || s.Velocity[axis] == 0{
+		return false
+	}
+	halfHori := utils.HoriProbeOffset / 2
+	axisAABBpos := s.Position
+	axisAABBpos[axis] += (utils.PlayerWidth/2 + halfHori) * float64(s.moveVector[axis])
+	return s.bboxIntersectsSolid(cube.Box(
+			axisAABBpos[0]-halfHori,
+			axisAABBpos[1]+utils.PlayerHeight,
+			axisAABBpos[2]-halfHori,
+			axisAABBpos[0]+halfHori,
+			axisAABBpos[1],
+			axisAABBpos[2]+halfHori,
+			).Stretch(cube.Axis((axis%2)+1), utils.PlayerWidth/2-halfHori))
+}
+
+func (s *StateInWorld) bboxIntersectsSolid(pBBox cube.BBox) bool {
+	bm := s.world
+	for pos := range blockPositionsInBBox(pBBox) {
+		model, ok := bm.BlockModel(pos, 0)
+		if !ok {
+			continue
+		}
+		for _, blockBox := range bboxes(model, pos, bm) {
+			if pBBox.IntersectsWith(blockBox) {
+				return true
+			}
+		}
+	}
+	return false
 }
