@@ -21,13 +21,11 @@ type Movement struct {
     isjumping    bool
 
     stateInWorld *physics.StateInWorld
-    scratch      *collisionScratch
 }
 
 func NewMovement(state *game.GameState) *Movement {
 	return &Movement{
 		state:    state,
-		scratch:  newCollisionScratch(),
 		stateInWorld: physics.NewStateInWorld(state.BlockMap()),
 	}
 }
@@ -77,7 +75,7 @@ func (m *Movement) setOnGround() {
 		pos[1],
 		pos[2]+halfW,
 	)
-	if m.velocity[1] == 0 && m.bboxIntersectsSolid(tinyBBox) {
+	if m.velocity[1] == 0 && utils.BBoxIntersectsSolid(m.state.BlockMap(), tinyBBox) {
 		m.onGround = true
 		m.state.Player().SetFlag(packet.InputFlagVerticalCollision)
 	}

@@ -21,6 +21,7 @@ const (
 	GroundProbeOffset   = float64(0.003)
 	HoriProbeOffset     = float64(0.003)
 	Negligible          = float64(0.003)
+	MaxStepHeight       = float64(0.6)
 )
 
 // return > 0 if currentOffset is closer to 0 ,0 if equals, else < 0
@@ -66,4 +67,9 @@ func Mgl32Vec3Tomgl64Vec3(v mgl32.Vec3) mgl64.Vec3 {
 
 func Mgl64Vec3Tomgl32Vec3(v mgl64.Vec3) mgl32.Vec3 {
 	return mgl32.Vec3{float32(v[0]), float32(v[1]), float32(v[2])}
+}
+
+func RoundFloat(val float64, precision uint) float64 {
+    ratio := math.Pow(10, float64(precision))
+    return math.Round(val * ratio) / ratio
 }

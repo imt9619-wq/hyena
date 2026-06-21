@@ -1,12 +1,9 @@
 package physics
 
 import (
-	"fmt"
 	"iter"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/utils"
 )
@@ -18,7 +15,7 @@ func floatIntBetween(a, b float64) iter.Seq[float64] {
 	}
 	iterTimes := int(b-a)+1
 	return func(yield func(float64) bool) {
-		for i, j := a, 0; j <= iterTimes; j++{
+		for i, j := a, 0; j < iterTimes; j++{
 			if !yield(i){
 				return 
 			}
@@ -38,10 +35,8 @@ func AOffset(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (offset float64
 	}
 	if delta[axis] > 0 && self.Max()[axis] <= nearby.Min()[axis]{
 		offset = min(nearby.Min()[axis] - self.Max()[axis], delta[axis])
-		fmt.Printf("Index: %d, offset: %v\n", axis, offset)
 	}else if delta[axis] < 0 && self.Min()[axis] >= nearby.Max()[axis]{
 		offset = max(nearby.Max()[axis] - self.Min()[axis], delta[axis])
-		fmt.Printf("Index: %d, offset: %v\n", axis, offset)
 	}else{
 		return
 	}
@@ -56,29 +51,4 @@ func AOffset(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (offset float64
 		reachable = true
 	}
 	return
-}
-
-func bboxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BBox{
-	blockBoxes := model.BBox(pos, s)
-	for i, bbox := range blockBoxes{
-		blockBoxes[i] = bbox.Translate(pos.Vec3())
-	}
-	return blockBoxes
-}
-
-func blockPositionsInBBox(bbox cube.BBox) iter.Seq[cube.Pos]{
-	min := bbox.Min()
-	max := bbox.Max()
-	
-	return func(yield func(cube.Pos) bool) {
-		for x := int(math.Floor(min[0])); x <= int(math.Floor(max[0])); x++ {
-			for y := int(math.Floor(min[1])); y <= int(math.Floor(max[1])); y++ {
-				for z := int(math.Floor(min[2])); z <= int(math.Floor(max[2])); z++ {
-					if !yield(cube.Pos{x, y, z}){
-						return 
-					}
-				}
-			}
-		}
-	}
 }

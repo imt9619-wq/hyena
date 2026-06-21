@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -56,4 +58,74 @@ func ProtocolPosToWorldChunkPos(protocolPos protocol.BlockPos) world.ChunkPos {
 
 func LastFourBit(x int32) int32 {
 	return x & 0x0F
+}
+
+type BlockSourse interface{
+	world.BlockSource
+	BlockModel(cube.Pos, uint8) (world.BlockModel, bool)
+}
+
+func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
+	for pos, model := range SweptModelsInBBox(pBBox, bs) {
+		for _, blockBox := range BBoxes(model, pos, bs) {
+			if pBBox.IntersectsWith(blockBox) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func SweptModelsInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, world.BlockModel]{
+	return func(yield func(cube.Pos, world.BlockModel) bool) {
+		for pos := range blockPositionsInBBox(bbox) {
+			model, ok := bs.BlockModel(pos, 0)
+			if !ok {
+				continue
+			}
+			if !yield(pos, model){
+				return 
+			}
+		}
+	}
+}
+
+func blockPositionsInBBox(bbox cube.BBox) iter.Seq[cube.Pos]{
+	min := bbox.Min()
+	max := bbox.Max()
+	
+	return func(yield func(cube.Pos) bool) {
+		for x := int(math.Floor(min[0])); x <= int(math.Floor(max[0])); x++ {
+			for y := int(math.Floor(min[1])); y <= int(math.Floor(max[1])); y++ {
+				for z := int(math.Floor(min[2])); z <= int(math.Floor(max[2])); z++ {
+					if !yield(cube.Pos{x, y, z}){
+						return 
+					}
+				}
+			}
+		}
+	}
+}
+
+func BBoxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BBox{
+	blockBoxes := model.BBox(pos, s)
+	for i, bbox := range blockBoxes{
+		blockBoxes[i] = bbox.Translate(pos.Vec3())
+	}
+	return blockBoxes
+}
+
+type AxisFace [3]cube.Face
+func DeltaAxisFace(deltas mgl64.Vec3) AxisFace{
+	a := AxisFace{cube.FaceWest, cube.FaceDown, cube.FaceNorth}
+	if deltas[0] > 0 {
+		a[0] = cube.FaceEast
+	}
+	if deltas[1] > 0 {
+		a[1] = cube.FaceUp
+	}
+	if deltas[2] > 0 {
+		a[2] = cube.FaceSouth
+	}
+	return a
 }

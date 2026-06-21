@@ -1,11 +1,14 @@
 package physics
 
 import (
+	"iter"
 	"slices"
 	"sync"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/utils"
 )
 
@@ -70,8 +73,7 @@ func newScratch() *phyScratch{
 // sweptBlockPositions returns block positions the player bbox crosses while moving by deltas.
 func (p *phyScratch) sweptBlockPositions(aabb cube.BBox, deltas mgl64.Vec3) map[cube.Pos]struct{} {
 	clear(p.blockInPath)
-	corners := p.aabbGrids(aabb.Grow(0.2))
-	for _, corner := range corners {
+	for _, corner := range p.aabbGrids(aabb.Grow(0.2)) {
 		for axis, start := range corner {
 			if deltas[axis] == 0 {
 				continue
@@ -87,6 +89,21 @@ func (p *phyScratch) sweptBlockPositions(aabb cube.BBox, deltas mgl64.Vec3) map[
 	}
 	return p.blockInPath
 }
+
+func (p *phyScratch) SweptBlockModels(aabb cube.BBox, deltas mgl64.Vec3, bm *blockmap.BlockMap) iter.Seq2[cube.Pos, world.BlockModel]{
+	return func(yield func(cube.Pos, world.BlockModel) bool) {
+		for blockPos := range p.sweptBlockPositions(aabb, deltas){
+			model, ok := bm.BlockModel(blockPos, 0)
+			if !ok {
+				continue
+			}
+			if !yield(blockPos, model){
+				return 
+			}
+		}
+	}
+}
+
 
 func (p *phyScratch) aabbGrids(aabb cube.BBox) []mgl64.Vec3{
 	if getGrid(aabb, &p.aabbGrid){
@@ -105,32 +122,26 @@ func (p *phyScratch) aabbGrids(aabb cube.BBox) []mgl64.Vec3{
 }
 
 // axisOffset is the closest allowed travel distance on one axis before hitting a block.
-type axisOffset struct {
-	offset float64
-	blocks []cube.BBox
+type AxisOffset struct {
+	Offset float64
 }
 
-func (o *axisOffset) consider(candidate float64, block cube.BBox) {
-	if utils.IsCloserToZero(candidate, o.offset) > 0 {
-		o.blocks = o.blocks[:0]
-		o.offset = candidate
-	}
-	if candidate == o.offset {
-		o.blocks = append(o.blocks, block)
+func (o *AxisOffset) consider(candidate float64) {
+	if utils.IsCloserToZero(candidate, o.Offset) > 0 {
+		o.Offset = candidate
 	}
 }
 
 // axisOffsets holds per-axis collision results for a single movement probe.
-type axisOffsets [3]axisOffset
+type axisOffsets [3]AxisOffset
 
 func (a *axisOffsets) offsetArr() [3]float64{
-	return [3]float64{a[0].offset, a[1].offset, a[2].offset}
+	return [3]float64{a[0].Offset, a[1].Offset, a[2].Offset}
 }
 
 func (a *axisOffsets) reset(deltas mgl64.Vec3) {
 	for i := range a {
-		a[i].offset = deltas[i]
-		a[i].blocks = a[i].blocks[:0]
+		a[i].Offset = deltas[i]
 	}
 }
 
@@ -138,7 +149,7 @@ func (a *axisOffsets) considerOffsets(self, nearby cube.BBox, solid [3]bool, del
 	for axis, isSolid := range solid{
 		if isSolid{
 			if offset, ok := AOffset(self, nearby, axis, deltas); ok{
-				a[axis].consider(offset, nearby)
+				a[axis].consider(offset)
 			}
 		}
 	}
