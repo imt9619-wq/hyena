@@ -22,27 +22,36 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	sw :=  m.stateInWorld
 	var stepHeight float64 = 0
 	var ceilHeight float64 = 1000
+	var walkStairVelocity mgl64.Vec3
+	for axis, plane := range velocity{
+		if plane == 0 && m.velocity[axis] != 0{
+			walkStairVelocity[axis] = m.velocity[axis]
+		}else{
+			walkStairVelocity[axis] = 0
+		}
+	}
 	pBBoxInStairs := utils.PlayerBBox(sw.Position)
-	pBBoxInStairs = pBBoxInStairs.Extend(m.velocity.Mul(2*utils.HoriProbeOffset/m.velocity.Len()))
-	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, utils.MaxStepHeight)
+	pBBoxInStairs = pBBoxInStairs.Extend(walkStairVelocity.Mul(utils.ProbeOffset/walkStairVelocity.Len()))
+	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, MaxStepHeight)
 
-	for pos, model := range utils.SweptModelsInBBox(pBBoxInStairs, m.state.BlockMap()){
-		for _, blockBox := range utils.BBoxes(model, pos, m.state.BlockMap()){
-			if pBBoxInStairs.IntersectsWith(blockBox){
-				if blockBox.Min()[1] >= sw.AABB.Max()[1]{
-					ceilHeight = min(ceilHeight, blockBox.Min()[1]-sw.AABB.Max()[1])
-				}else if blockBox.Max()[1] >= sw.AABB.Min()[1]{
-					stepHeight = max(stepHeight, blockBox.Max()[1]-sw.AABB.Min()[1])
-				}				
-			}
+	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.state.BlockMap()){
+		fmt.Println(blockBox)
+		if pBBoxInStairs.IntersectsWith(blockBox){
+			if blockBox.Min()[1] >= sw.AABB.Max()[1]{
+				ceilHeight = min(ceilHeight, blockBox.Min()[1]-sw.AABB.Max()[1])
+			}else if blockBox.Max()[1] >= sw.AABB.Min()[1]{
+				stepHeight = max(stepHeight, blockBox.Max()[1]-sw.AABB.Min()[1])
+			}				
 		}
 	}
 	fmt.Printf("ceilHeight: %v, stepHeight: %v\n", ceilHeight, stepHeight)
-	if stepHeight > utils.MaxStepHeight || ceilHeight < stepHeight{
+	if stepHeight > MaxStepHeight || stepHeight == 0 || ceilHeight < stepHeight{
 		return
 	}
-	stepPos, stepVelocity := m.simAState(m.position.Add(mgl64.Vec3{0, stepHeight, 0}), m.velocity)
-	if stepPos.Sub(m.playerPosBeforeVelocityApply()).Len() <= pos.Sub(m.playerPosBeforeVelocityApply()).Len(){
+
+	posBeforeVelocityApply := m.playerPosBeforeVelocityApply()
+	stepPos, stepVelocity := m.simAState(posBeforeVelocityApply.Add(mgl64.Vec3{0, stepHeight, 0}), m.velocity)
+	if stepPos.Sub(posBeforeVelocityApply).Len() <= pos.Sub(posBeforeVelocityApply).Len(){
 		return
 	}
 	return stepPos, stepVelocity

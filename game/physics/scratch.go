@@ -145,12 +145,10 @@ func (a *axisOffsets) reset(deltas mgl64.Vec3) {
 	}
 }
 
-func (a *axisOffsets) considerOffsets(self, nearby cube.BBox, solid [3]bool, deltas mgl64.Vec3){
-	for axis, isSolid := range solid{
-		if isSolid{
-			if offset, ok := AOffset(self, nearby, axis, deltas); ok{
-				a[axis].consider(offset)
-			}
+func (a *axisOffsets) considerOffsets(self, nearby cube.BBox, deltas mgl64.Vec3){
+	for axis := range deltas{
+		if offset, ok := AOffset(self, nearby, axis, deltas); ok{
+			a[axis].consider(offset)
 		}
 	}
 }

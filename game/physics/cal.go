@@ -2,6 +2,7 @@ package physics
 
 import (
 	"iter"
+	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
@@ -51,4 +52,8 @@ func AOffset(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (offset float64
 		reachable = true
 	}
 	return
+}
+
+func roundToSixteenth(val float64) float64 {
+	return math.Round(val * 16) / 16
 }

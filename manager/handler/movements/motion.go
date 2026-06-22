@@ -1,8 +1,11 @@
 package movements
 
 import (
+	"fmt"
 	"math"
 
+	"github.com/df-mc/dragonfly/server/block"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/utils"
@@ -10,6 +13,7 @@ import (
 )
 
 func (m *Movement) doMotions() {
+	m.setSlipperiness()
 	m.applyHorizontalMovement()
 	if m.isjumping {
 		m.jump()
@@ -75,30 +79,44 @@ func (m *Movement) StopJumping() {
 	})
 }
 
-func (m *Movement) slipperiness() float64 {
-	slipperiness := float64(1.0)
-	if m.onGround {
-		slipperiness = utils.DefaultSlipperiness
+func (m *Movement) setSlipperiness() {
+	if !m.onGround {
+		m.slipperiness = AirborneSlipperiness
+		return
 	}
-	return slipperiness
-}
-
-func (m *Movement) friction() float64 {
-	slipperiness := m.slipperiness()
-	friction := slipperiness * 0.91
-	return friction
+	pPosUnder1b := m.position.Sub(mgl64.Vec3{0, 0.5, 0})
+	bboxUnder1B := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(pPosUnder1b), cube.FaceDown)
+	pCubePos := cube.PosFromVec3(pPosUnder1b)
+	for pos, bl := range utils.BlockInBBox(bboxUnder1B, m.state.BlockMap()){
+		if pos != pCubePos{
+			continue
+		}
+		fmt.Printf("block under: %T\n", bl)
+		switch bl.(type){
+		case block.Slime:
+			m.slipperiness = 0.8
+		case block.PackedIce:
+			m.slipperiness = 0.98
+		case block.BlueIce:
+			m.slipperiness = 0.989
+		default:
+			m.slipperiness = DefaultSlipperiness
+		}
+		return
+	}
+	m.slipperiness = DefaultSlipperiness
 }
 
 // applyHorizontalMovement applies vanilla per-axis friction then sprint input acceleration.
 // See https://www.mcpk.wiki/wiki/Horizontal_Movement_Formulas
 func (m *Movement) applyHorizontalMovement() {
-	friction := m.friction()
+	friction := m.slipperiness * SlipperinessToFriction
 	mx := m.velocity[0] * friction
 	mz := m.velocity[2] * friction
-	if math.Abs(mx) < utils.MomentumThreshold {
+	if math.Abs(mx) < MomentumThreshold {
 		mx = 0
 	}
-	if math.Abs(mz) < utils.MomentumThreshold {
+	if math.Abs(mz) < MomentumThreshold {
 		mz = 0
 	}
 	m.velocity[0] = mx
@@ -107,32 +125,31 @@ func (m *Movement) applyHorizontalMovement() {
 
 func (m *Movement) jump() {
 	if m.onGround {
-		m.velocity[1] = utils.JumpSpeed
+		m.velocity[1] = JumpSpeed
 	}
 	m.state.Player().SetFlag(packet.InputFlagJumping)
 	m.state.Player().SetFlag(packet.InputFlagJumpCurrentRaw)
 }
 
 func (m *Movement) run() {
-	slipperiness := m.slipperiness()
 	ps := m.state.Player()
 	yawRad := float64(ps.Yaw) * (math.Pi / 180)
 	sinD := math.Sin(yawRad)
 	cosD := math.Cos(yawRad)
 
 	if m.onGround {
-		accel := 0.1 * utils.SprintMovementMult * math.Pow(0.6/slipperiness, 3)
+		accel := 0.1 * SprintMovementMult * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 	} else {
-		airAccel := 0.02 * utils.SprintMovementMult
+		airAccel := 0.02 * SprintMovementMult
 		m.velocity[0] += airAccel * sinD
 		m.velocity[2] += airAccel * cosD
 	}
 
 	if m.isjumping && m.onGround {
-		m.velocity[0] += utils.SprintJumpBoost * sinD
-		m.velocity[2] += utils.SprintJumpBoost * cosD
+		m.velocity[0] += SprintJumpBoost * sinD
+		m.velocity[2] += SprintJumpBoost * cosD
 	}
 
 	m.state.Player().SetFlag(packet.InputFlagSprinting)

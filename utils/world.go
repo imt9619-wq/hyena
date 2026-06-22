@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"iter"
 	"math"
 
@@ -9,6 +10,15 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
+)
+
+// networkOffset can be found at github.com\df-mc\dragonfly\server\player.(ptype).NetworkOffset()
+const (
+	PlayerHeight           = float64(1.8)
+	PlayerWidth            = float64(0.6)
+	NetworkOffset          = float64(1.62)
+	ProbeOffset            = float64(0.003)
+	Negligible             = float64(0.003)
 )
 
 func ProtocolPosToMgl32Vec3(protocolPos protocol.BlockPos) mgl32.Vec3 {
@@ -66,26 +76,28 @@ type BlockSourse interface{
 }
 
 func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
-	for pos, model := range SweptModelsInBBox(pBBox, bs) {
-		for _, blockBox := range BBoxes(model, pos, bs) {
-			if pBBox.IntersectsWith(blockBox) {
-				return true
-			}
+	for _, blockBox := range SweptBBoxInBBox(pBBox, bs) {
+		if pBBox.IntersectsWith(blockBox) {
+			fmt.Printf("Intersected true: %v\n", blockBox)
+			return true
 		}
 	}
 	return false
 }
 
-func SweptModelsInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, world.BlockModel]{
-	return func(yield func(cube.Pos, world.BlockModel) bool) {
+func SweptBBoxInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, cube.BBox]{
+	return func(yield func(cube.Pos, cube.BBox) bool) {
 		for pos := range blockPositionsInBBox(bbox) {
 			model, ok := bs.BlockModel(pos, 0)
 			if !ok {
 				continue
 			}
-			if !yield(pos, model){
-				return 
+			for _, bbox := range BBoxes(model, pos, bs){
+				if !yield(pos, bbox){
+					return 
+				}
 			}
+			
 		}
 	}
 }
@@ -128,4 +140,62 @@ func DeltaAxisFace(deltas mgl64.Vec3) AxisFace{
 		a[2] = cube.FaceSouth
 	}
 	return a
+}
+
+func BlockInBBox(bbox cube.BBox, bs world.BlockSource) iter.Seq2[cube.Pos, world.Block]{
+	return func(yield func(cube.Pos, world.Block) bool) {
+		for blockPos := range blockPositionsInBBox(bbox){
+			if !yield(blockPos, bs.Block(blockPos)){
+				return 
+			}
+		}
+	}
+}
+
+func TinyBBoxOnBBoxFace(self cube.BBox, face cube.Face) cube.BBox{
+	min, max := self.Min(), self.Max()
+	switch face{
+	case cube.FaceUp:
+		min[1] = max[1]
+		max[1] += ProbeOffset
+	case cube.FaceDown:
+		max[1] = min[1]
+		min[1] -= ProbeOffset
+	case cube.FaceNorth:
+		max[2] = min[2]
+		min[2] -= ProbeOffset
+	case cube.FaceEast:
+		min[0] = max[0]
+		max[0] += ProbeOffset
+	case cube.FaceSouth:
+		min[2] = max[2]
+		max[2] += ProbeOffset
+	default:
+		max[0] = min[0]
+		min[0] -= ProbeOffset
+	}
+	return cube.Box(min[0], min[1], min[2], max[0], max[1], max[2])
+}
+
+func FaceOnDeltaAxis(delta mgl64.Vec3, axis int) cube.Face{
+	switch axis{
+	case 0:
+		if delta[axis] > 0{
+			return cube.FaceEast
+		}else{
+			return cube.FaceWest
+		}
+	case 1:
+		if delta[axis] > 0{
+			return cube.FaceUp
+		}else{
+			return cube.FaceDown
+		}
+	default:
+		if delta[axis] > 0{
+			return cube.FaceSouth
+		}else{
+			return cube.FaceNorth
+		}
+	}
 }

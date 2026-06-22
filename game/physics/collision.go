@@ -1,8 +1,6 @@
 package physics
 
 import (
-	"math"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game/blockmap"
@@ -15,7 +13,6 @@ type StateInWorld struct{
 	BBoxFunc utils.BBoxFunc
     AABB     cube.BBox
 
-    moveVector [3]int
     world      *blockmap.BlockMap
     scratch    *phyScratch
 }
@@ -30,29 +27,20 @@ func NewStateInWorld(world *blockmap.BlockMap) *StateInWorld{
 // simState will use the given aabb, velocity, position and simulate the newState which the newState will 
 // replace the old one
 func (s *StateInWorld) SimState(){
-	s.setMoveVector()
 	s.getOffset()
 	s.simOffset()
 }
 
-func (s *StateInWorld) roundOffY(){
-	if mgl64.FloatEqualThreshold(math.Round(s.Position[1]), s.Position[1], utils.Negligible){
-		s.Position[1] = math.Round(s.Position[1])
+// we are going to round off player position to the nearest sixteenth as the player might be stuck(rare but possible) 
+// if they got something like Z: 88.19999694824219
+func (s *StateInWorld) roundOffPos(){
+	for axis, dist := range s.Position{
+		if mgl64.FloatEqualThreshold(roundToSixteenth(dist), dist, utils.Negligible){
+			s.Position[axis] = roundToSixteenth(dist)
+		}
 	}
 	
 	s.AABB = s.BBoxFunc(s.Position)
-}
-
-func (s *StateInWorld) setMoveVector(){
-	for axis, plane := range s.Velocity{
-		if plane == 0{
-			s.moveVector[axis] = 0
-		}else if plane > 0{
-			s.moveVector[axis] = 1
-		}else{
-			s.moveVector[axis] = -1
-		}
-	}
 }
 
 func (s *StateInWorld) simOffset(){
@@ -76,7 +64,7 @@ func (s *StateInWorld) getOffset(){
 	if utils.DeltaIsZero(s.Velocity){
 		return
 	}
-	s.roundOffY()
+	s.roundOffPos()
 	for axis := range s.Velocity{
 		if s.isHittingWallOnAxis(axis){
 			s.Velocity[axis] = 0
@@ -85,12 +73,8 @@ func (s *StateInWorld) getOffset(){
 	bm := s.world
 	s.scratch.offsets.reset(s.Velocity)
 	for pos, model := range s.scratch.SweptBlockModels(s.AABB, s.Velocity, bm) {
-		blockBoxes := utils.BBoxes(model, pos, bm)
-		a := utils.DeltaAxisFace(s.Velocity)
-		xSolid ,ySolid, zSolid := model.FaceSolid(pos, a[0], bm), model.FaceSolid(pos, a[1], bm), 
-								  model.FaceSolid(pos, a[2], bm)
-		for _, blockBox := range blockBoxes {
-			s.scratch.offsets.considerOffsets(s.AABB, blockBox, [3]bool{xSolid, ySolid, zSolid}, s.Velocity)
+		for _, blockBox := range utils.BBoxes(model, pos, bm) {
+			s.scratch.offsets.considerOffsets(s.AABB, blockBox, s.Velocity)
 		}
 	}
 }
@@ -99,17 +83,7 @@ func (s *StateInWorld) isHittingWallOnAxis(axis int) bool{
 	if axis == 1 || s.Velocity[axis] == 0{
 		return false
 	}
-	halfHori := utils.HoriProbeOffset / 2
-	axisAABBpos := s.Position
-	axisAABBpos[axis] += (utils.PlayerWidth/2 + halfHori) * float64(s.moveVector[axis])
-	return utils.BBoxIntersectsSolid(s.world, cube.Box(
-			axisAABBpos[0]-halfHori,
-			axisAABBpos[1]+s.AABB.Height(),
-			axisAABBpos[2]-halfHori,
-			axisAABBpos[0]+halfHori,
-			axisAABBpos[1],
-			axisAABBpos[2]+halfHori,
-			).Stretch(cube.Axis((axis/2)+1), utils.PlayerWidth/2-halfHori))
+	return utils.BBoxIntersectsSolid(s.world, utils.TinyBBoxOnBBoxFace(s.AABB, utils.FaceOnDeltaAxis(s.Velocity, axis)))
 }
 
 func (s *StateInWorld) Scratch() *phyScratch{

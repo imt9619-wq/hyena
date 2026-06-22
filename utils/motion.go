@@ -8,22 +8,6 @@ import (
 	"github.com/go-gl/mathgl/mgl64"
 )
 
-// networkOffset can be found at github.com\df-mc\dragonfly\server\player.(ptype).NetworkOffset()
-const (
-	PlayerHeight        = float64(1.8)
-	PlayerWidth         = float64(0.6)
-	DefaultSlipperiness = float64(0.6)
-	SprintMovementMult  = float64(1.3)
-	SprintJumpBoost     = float64(0.2)
-	JumpSpeed           = float64(0.42)
-	NetworkOffset       = float64(1.62)
-	MomentumThreshold   = float64(0.003)
-	GroundProbeOffset   = float64(0.003)
-	HoriProbeOffset     = float64(0.003)
-	Negligible          = float64(0.003)
-	MaxStepHeight       = float64(0.6)
-)
-
 // return > 0 if currentOffset is closer to 0 ,0 if equals, else < 0
 func IsCloserToZero(currentOffset float64, leastOffset float64) float64 {
 	return math.Abs(leastOffset) - math.Abs(currentOffset)

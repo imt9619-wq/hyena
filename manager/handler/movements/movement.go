@@ -12,6 +12,17 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
+const(
+	DefaultSlipperiness    = float64(0.6)
+	AirborneSlipperiness   = float64(1)
+	SlipperinessToFriction = float64(0.91)
+	SprintMovementMult     = float64(1.3)
+	SprintJumpBoost        = float64(0.2)
+	JumpSpeed              = float64(0.42)
+	MomentumThreshold      = float64(0.003)
+	MaxStepHeight          = float64(0.6)
+)
+
 type Movement struct {
 	state        *game.GameState
     position     mgl64.Vec3
@@ -19,6 +30,7 @@ type Movement struct {
     onGround     bool
     isrunning    bool
     isjumping    bool
+	slipperiness float64
 
     stateInWorld *physics.StateInWorld
 }
@@ -65,16 +77,7 @@ func (m *Movement) copyPlayerState() {
 
 func (m *Movement) setOnGround() {
 	m.onGround= false
-	halfW := utils.PlayerWidth / 2
-	pos := m.position
-	tinyBBox := cube.Box(
-		pos[0]-halfW,
-		pos[1]-utils.GroundProbeOffset,
-		pos[2]-halfW,
-		pos[0]+halfW,
-		pos[1],
-		pos[2]+halfW,
-	)
+	tinyBBox := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(m.position), cube.FaceDown)
 	if m.velocity[1] == 0 && utils.BBoxIntersectsSolid(m.state.BlockMap(), tinyBBox) {
 		m.onGround = true
 		m.state.Player().SetFlag(packet.InputFlagVerticalCollision)
