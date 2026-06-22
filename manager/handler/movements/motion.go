@@ -1,7 +1,6 @@
 package movements
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block"
@@ -91,7 +90,6 @@ func (m *Movement) setSlipperiness() {
 		if pos != pCubePos{
 			continue
 		}
-		fmt.Printf("block under: %T\n", bl)
 		switch bl.(type){
 		case block.Slime:
 			m.slipperiness = 0.8

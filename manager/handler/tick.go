@@ -24,7 +24,7 @@ func (c *Connection) setInputFlagBlockBreakingDelayEnabled() {
 }
 
 func (c *Connection) startTicking() {
-	ticker := time.NewTicker(50 * time.Millisecond)
+	ticker := time.NewTicker(500 * time.Millisecond)
 
 	go func() {
 		for {

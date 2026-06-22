@@ -17,5 +17,5 @@ func (h DefaultHandler) OnDisconnect(c *Connection, reason string) {
 func (h DefaultHandler) OnJoin(c *Connection) {
 	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 	c.StartRunning()
-	c.StartJumping()
+	//c.StartJumping()
 }

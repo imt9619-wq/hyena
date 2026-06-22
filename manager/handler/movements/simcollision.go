@@ -44,6 +44,7 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 			}				
 		}
 	}
+	fmt.Printf("ceilHeight: %v, stepHeight: %v\n", ceilHeight, stepHeight)
 	if stepHeight > MaxStepHeight || stepHeight == 0 || ceilHeight < stepHeight{
 		return
 	}
