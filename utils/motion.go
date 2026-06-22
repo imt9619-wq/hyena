@@ -33,6 +33,8 @@ func DeltaIsZero(d mgl64.Vec3) bool {
 	return d[0] == 0 && d[1] == 0 && d[2] == 0
 }
 
+type BBoxFunc func(mgl64.Vec3) cube.BBox
+
 func PlayerBBox(pos mgl64.Vec3) cube.BBox {
 	halfW := PlayerWidth / 2
 	return cube.Box(

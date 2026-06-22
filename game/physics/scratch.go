@@ -123,7 +123,7 @@ func (p *phyScratch) aabbGrids(aabb cube.BBox) []mgl64.Vec3{
 
 // axisOffset is the closest allowed travel distance on one axis before hitting a block.
 type AxisOffset struct {
-	Offset float64
+	Offset     float64
 }
 
 func (o *AxisOffset) consider(candidate float64) {

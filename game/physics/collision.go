@@ -1,7 +1,7 @@
 package physics
 
 import (
-	"fmt"
+	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
@@ -12,6 +12,7 @@ import (
 type StateInWorld struct{
     Velocity mgl64.Vec3
     Position mgl64.Vec3
+	BBoxFunc utils.BBoxFunc
     AABB     cube.BBox
 
     moveVector [3]int
@@ -32,6 +33,14 @@ func (s *StateInWorld) SimState(){
 	s.setMoveVector()
 	s.getOffset()
 	s.simOffset()
+}
+
+func (s *StateInWorld) roundOffY(){
+	if mgl64.FloatEqualThreshold(math.Round(s.Position[1]), s.Position[1], utils.Negligible){
+		s.Position[1] = math.Round(s.Position[1])
+	}
+	
+	s.AABB = s.BBoxFunc(s.Position)
 }
 
 func (s *StateInWorld) setMoveVector(){
@@ -67,9 +76,9 @@ func (s *StateInWorld) getOffset(){
 	if utils.DeltaIsZero(s.Velocity){
 		return
 	}
+	s.roundOffY()
 	for axis := range s.Velocity{
 		if s.isHittingWallOnAxis(axis){
-			fmt.Printf("Is hitting on wall axis %v\n", axis)
 			s.Velocity[axis] = 0
 		}
 	}
