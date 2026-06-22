@@ -15,7 +15,7 @@ func (m *Movement) simCollision(){
 
 func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	pos, velocity = m.stateInWorld.Position, m.stateInWorld.Velocity
-	if !m.onGround || m.velocity[1] != 0 || utils.DeltaIsZero(m.velocity){
+	if !m.onGround || utils.DeltaIsZero(m.velocity){
 		return
 	}
 
@@ -24,7 +24,7 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	var ceilHeight float64 = 1000
 	var walkStairVelocity mgl64.Vec3
 	for axis, plane := range velocity{
-		if plane == 0 && m.velocity[axis] != 0{
+		if plane == 0 && m.velocity[axis] != 0 && axis != 1{
 			walkStairVelocity[axis] = m.velocity[axis]
 		}else{
 			walkStairVelocity[axis] = 0
@@ -44,13 +44,16 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 			}				
 		}
 	}
-	fmt.Printf("ceilHeight: %v, stepHeight: %v\n", ceilHeight, stepHeight)
 	if stepHeight > MaxStepHeight || stepHeight == 0 || ceilHeight < stepHeight{
 		return
 	}
-
+	// jump cancel
+	velocityAfterStair := m.velocity
+	if m.isjumping && m.velocity[1] == JumpSpeed && stepHeight >= JumpSpeed{
+		velocityAfterStair[1] = 0
+	}
 	posBeforeVelocityApply := m.playerPosBeforeVelocityApply()
-	stepPos, stepVelocity := m.simAState(posBeforeVelocityApply.Add(mgl64.Vec3{0, stepHeight, 0}), m.velocity)
+	stepPos, stepVelocity := m.simAState(posBeforeVelocityApply.Add(mgl64.Vec3{0, stepHeight, 0}), velocityAfterStair)
 	if stepPos.Sub(posBeforeVelocityApply).Len() <= pos.Sub(posBeforeVelocityApply).Len(){
 		return
 	}

@@ -32,7 +32,7 @@ func (s *StateInWorld) SimState(){
 }
 
 // we are going to round off player position to the nearest sixteenth as the player might be stuck(rare but possible) 
-// if they got something like Z: 88.19999694824219
+// if they got something like Z: 88.19999694824219 and is in front of a stair
 func (s *StateInWorld) roundOffPos(){
 	for axis, dist := range s.Position{
 		if mgl64.FloatEqualThreshold(roundToSixteenth(dist), dist, utils.Negligible){
