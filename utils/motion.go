@@ -66,3 +66,12 @@ func RoundVecTo5Decimal(delta mgl64.Vec3) mgl64.Vec3{
 	}
 	return delta
 }
+
+func RemoveDeltaEpsilon(delta mgl64.Vec3) mgl64.Vec3{
+	for axis, plane := range delta{
+		if mgl64.FloatEqualThreshold(plane, 0, Epsilon){
+			delta[axis] = 0
+		}
+	}
+	return delta
+}

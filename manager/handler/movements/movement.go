@@ -52,8 +52,8 @@ func (m *Movement) Tick() {
 	m.pasteToPlayerState()
 	fmt.Printf("Offset on tick %d: %+v\n", m.state.GStick(), m.stateInWorld.ScratchOffset())
 	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", m.state.GStick(), m.position, m.velocity, m.onGround)
-	fmt.Printf("Time used for tick %d: %0.2fms\n", m.state.GStick(), time.Since(now).Seconds()*1000)
-	fmt.Printf("Block pos based on pPos: %v\n\n", cube.PosFromVec3(m.position))
+	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(m.position))
+	fmt.Printf("Time used for tick %d: %0.3fms\n\n", m.state.GStick(), time.Since(now).Seconds()*1000)
 }
 
 func (m *Movement) pasteToPlayerState() {

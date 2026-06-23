@@ -107,6 +107,10 @@ func (m *Movement) applyHorizontalMovement() {
 	m.velocity[2] = mz
 }
 
+func (m *Movement) movementMultiplier() float64{
+	return 0.98
+}
+
 func (m *Movement) jump() {
 	if m.onClimb{
 		m.velocity[1] = ClimbSpeed
@@ -126,7 +130,7 @@ func (m *Movement) run() {
 	cosD := math.Cos(yawRad)
 
 	if m.onGround {
-		accel := 0.1 * SprintMovementMult * math.Pow(0.6/m.slipperiness, 3)
+		accel := 0.1 * SprintMovementMult * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 	} else {
@@ -135,7 +139,7 @@ func (m *Movement) run() {
 		m.velocity[2] += airAccel * cosD
 	}
 
-	if m.isjumping && m.onGround {
+	if m.isjumping && m.onGround && !m.onClimb{
 		m.velocity[0] += SprintJumpBoost * sinD
 		m.velocity[2] += SprintJumpBoost * cosD
 	}

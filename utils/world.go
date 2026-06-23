@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"iter"
 	"math"
 
@@ -19,6 +18,7 @@ const (
 	NetworkOffset          = float64(1.62)
 	ProbeOffset            = float64(0.003)
 	Negligible             = float64(0.003)
+	Epsilon                = float64(0.0001)
 )
 
 func ProtocolPosToMgl32Vec3(protocolPos protocol.BlockPos) mgl32.Vec3 {
@@ -78,7 +78,6 @@ type BlockSourse interface{
 func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
 	for _, blockBox := range SweptBBoxInBBox(pBBox, bs) {
 		if pBBox.IntersectsWith(blockBox) {
-			fmt.Printf("Intersected true: %v\n", blockBox)
 			return true
 		}
 	}

@@ -1,8 +1,6 @@
 package movements
 
 import (
-	"fmt"
-
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/utils"
@@ -35,7 +33,6 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, MaxStepHeight)
 
 	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.state.BlockMap()){
-		fmt.Println(blockBox)
 		if pBBoxInStairs.IntersectsWith(blockBox){
 			if blockBox.Min()[1] >= sw.AABB.Max()[1]{
 				ceilHeight = min(ceilHeight, blockBox.Min()[1]-sw.AABB.Max()[1])
@@ -44,7 +41,6 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 			}				
 		}
 	}
-	fmt.Printf("ceilHeight: %v, stepHeight: %v\n", ceilHeight, stepHeight)
 	if stepHeight > MaxStepHeight || stepHeight == 0 || ceilHeight < stepHeight{
 		return
 	}

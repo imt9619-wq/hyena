@@ -36,6 +36,7 @@ func (s *StateInWorld) SimState(){
 func (s *StateInWorld) roundOffPos(){
 	s.Position = utils.RoundVecTo5Decimal(s.Position)
 	s.AABB = s.BBoxFunc(s.Position)
+	s.Velocity = utils.RemoveDeltaEpsilon(s.Velocity)
 }
 
 func (s *StateInWorld) simOffset(){
