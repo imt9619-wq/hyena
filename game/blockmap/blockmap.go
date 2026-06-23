@@ -9,6 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/imt9619-wq/hyena/game/hblock"
 	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -155,4 +156,9 @@ func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel
 func (b *BlockMap) isRenderedChunk(chunk [2]int32) bool {
 	return b.chunkCentre[0]-b.chunkRadius <= chunk[0] && chunk[0] <= b.chunkCentre[0]+b.chunkRadius &&
 	b.chunkCentre[1]-b.chunkRadius <= chunk[1] && chunk[1] <= b.chunkCentre[1]+b.chunkRadius
+}
+
+func (b *BlockMap) Hblock(pos cube.Pos) hblock.Block {
+	bl, _ := b.block(pos, 0)
+	return hblock.WblockToHblock(bl)
 }

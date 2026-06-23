@@ -3,7 +3,6 @@ package movements
 import (
 	"math"
 
-	"github.com/df-mc/dragonfly/server/block"
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
@@ -83,26 +82,8 @@ func (m *Movement) setSlipperiness() {
 		m.slipperiness = AirborneSlipperiness
 		return
 	}
-	pPosUnder1b := m.position.Sub(mgl64.Vec3{0, 0.5, 0})
-	bboxUnder1B := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(pPosUnder1b), cube.FaceDown)
-	pCubePos := cube.PosFromVec3(pPosUnder1b)
-	for pos, bl := range utils.BlockInBBox(bboxUnder1B, m.state.BlockMap()){
-		if pos != pCubePos{
-			continue
-		}
-		switch bl.(type){
-		case block.Slime:
-			m.slipperiness = 0.8
-		case block.PackedIce:
-			m.slipperiness = 0.98
-		case block.BlueIce:
-			m.slipperiness = 0.989
-		default:
-			m.slipperiness = DefaultSlipperiness
-		}
-		return
-	}
-	m.slipperiness = DefaultSlipperiness
+	bl := m.state.BlockMap().Hblock(cube.PosFromVec3(m.position.Sub(mgl64.Vec3{0, 0.5, 0})))
+	m.slipperiness = bl.Slipperiness()
 }
 
 // applyHorizontalMovement applies vanilla per-axis friction then sprint input acceleration.
