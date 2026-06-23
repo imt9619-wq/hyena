@@ -47,7 +47,7 @@ func (c *Connection) replyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
 		ps.Yaw = yaw
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
-		ps.SetFlag(packet.InputFlagHandledTeleport)
+		c.state.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }
 
@@ -157,6 +157,6 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 		ps.Velocity = mgl32.Vec3{}
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
-		ps.SetFlag(packet.InputFlagHandledTeleport)
+		c.state.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }

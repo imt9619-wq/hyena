@@ -77,6 +77,6 @@ func (m *Movement) setOnGround() {
 	tinyBBox := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(m.position), cube.FaceDown)
 	if m.velocity[1] == 0 && utils.BBoxIntersectsSolid(m.state.BlockMap(), tinyBBox) {
 		m.onGround = true
-		m.state.Player().SetFlag(packet.InputFlagVerticalCollision)
+		m.state.SetFlag(packet.InputFlagVerticalCollision)
 	}
 }

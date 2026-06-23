@@ -46,7 +46,7 @@ func (m *Movement) StartRunning() {
 	}
 	m.state.Exec(func(q *game.Qx) {
 		m.isrunning = true
-		m.state.Player().SetFlag(packet.InputFlagStartSprinting)
+		m.state.SetFlag(packet.InputFlagStartSprinting)
 	})
 }
 
@@ -56,7 +56,7 @@ func (m *Movement) StopRunning() {
 	}
 	m.state.Exec(func(q *game.Qx) {
 		m.isrunning = false
-		m.state.Player().SetFlag(packet.InputFlagStopSprinting)
+		m.state.SetFlag(packet.InputFlagStopSprinting)
 	})
 }
 
@@ -66,9 +66,9 @@ func (m *Movement) StartJumping() {
 	}
 	m.state.Exec(func(q *game.Qx) {
 		m.isjumping = true
-		m.state.Player().SetFlag(packet.InputFlagJumpPressedRaw)
-		m.state.Player().SetFlag(packet.InputFlagJumpCurrentRaw)
-		m.state.Player().SetFlag(packet.InputFlagStartJumping)
+		m.state.SetFlag(packet.InputFlagJumpPressedRaw)
+		m.state.SetFlag(packet.InputFlagJumpCurrentRaw)
+		m.state.SetFlag(packet.InputFlagStartJumping)
 	})
 }
 
@@ -78,7 +78,7 @@ func (m *Movement) StopJumping() {
 	}
 	m.state.Exec(func(q *game.Qx) {
 		m.isjumping = false
-		m.state.Player().SetFlag(packet.InputFlagJumpReleasedRaw)
+		m.state.SetFlag(packet.InputFlagJumpReleasedRaw)
 	})
 }
 
@@ -115,8 +115,8 @@ func (m *Movement) jump() {
 	if m.onGround {
 		m.velocity[1] = JumpSpeed
 	}
-	m.state.Player().SetFlag(packet.InputFlagJumping)
-	m.state.Player().SetFlag(packet.InputFlagJumpCurrentRaw)
+	m.state.SetFlag(packet.InputFlagJumping)
+	m.state.SetFlag(packet.InputFlagJumpCurrentRaw)
 }
 
 func (m *Movement) run() {
@@ -140,5 +140,5 @@ func (m *Movement) run() {
 		m.velocity[2] += SprintJumpBoost * cosD
 	}
 
-	m.state.Player().SetFlag(packet.InputFlagSprinting)
+	m.state.SetFlag(packet.InputFlagSprinting)
 }

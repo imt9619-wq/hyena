@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/imt9619-wq/hyena/game"
@@ -86,6 +87,8 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 		c.replySubChunk(pk)
 	case *packet.MovePlayer:
 		c.replyMovePlayer(pk)
+	case *packet.CorrectPlayerMovePrediction:
+		fmt.Printf("Recieved pk %T: %+v\n", pk, pk)
 	default:
 	}
 }

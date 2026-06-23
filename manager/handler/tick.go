@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (c *Connection) tick() {
@@ -14,13 +13,8 @@ func (c *Connection) tick() {
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
 	c.movement.Tick()
-	c.setInputFlagBlockBreakingDelayEnabled()
 	c.requestSubChunkInQuery()
 	c.WritePacket(c.state.PlayerAuthInputWithState())
-}
-
-func (c *Connection) setInputFlagBlockBreakingDelayEnabled() {
-	c.state.Player().SetFlag(packet.InputFlagBlockBreakingDelayEnabled)
 }
 
 func (c *Connection) startTicking() {

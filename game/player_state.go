@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -15,8 +14,7 @@ type playerState struct {
 	Yaw      float32
 	Velocity mgl32.Vec3
 	OnGround bool
-	BlockActions []protocol.PlayerBlockAction
-	tickInputDataFlags protocol.Bitset
+	
 	lastTickPos mgl32.Vec3
 }
 
@@ -27,48 +25,22 @@ func newPlayerState(conn *minecraft.Conn) *playerState {
 		Yaw: conn.GameData().Yaw,
 		Velocity: mgl32.Vec3{},
 		OnGround: true,
-		BlockActions: make([]protocol.PlayerBlockAction, 0, 3),
-		tickInputDataFlags: protocol.NewBitset(packet.PlayerAuthInputBitsetSize),
 		lastTickPos: conn.GameData().PlayerPosition,
 	}
 	return ps
 }
 
 func (ps *playerState) tick() {
-	ps.resetFlags()
-	ps.resetBlockActions()
 	ps.lastTickPos = ps.Position
 }
 
-func (ps *playerState) SetFlag(flag int){
-	ps.tickInputDataFlags.Set(flag)
-}
-
-func (ps *playerState) playerAuthInputWithState(tick uint64) *packet.PlayerAuthInput {
-	pk := &packet.PlayerAuthInput{
-		Pitch:      ps.Pitch,
-		Yaw:        ps.Yaw,
-		Position:   ps.Position,
-		MoveVector: mgl32.Vec2{floatSign(ps.Velocity[0]), floatSign(ps.Velocity[2])},
-		HeadYaw: ps.Yaw,
-		InputData: ps.tickInputDataFlags,
-		InputMode: packet.InputModeTouch,
-		PlayMode: packet.PlayModeTeaser,
-		InteractionModel: packet.InteractionModelTouch,
-		InteractPitch: ps.Pitch,
-		InteractYaw: ps.Yaw,
-		Tick: tick,
-		Delta: ps.Position.Sub(ps.lastTickPos),
-		// TODO ItemInteractionData
-		// TODO ItemStackRequest 
-		BlockActions: ps.BlockActions,
-		VehicleRotation: mgl32.Vec2([2]float32{0}),
-		ClientPredictedVehicle: 0,
-		AnalogueMoveVector: mgl32.Vec2([2]float32{0}),
-		// TODO CameraOrientation
-		RawMoveVector: mgl32.Vec2{floatSign(ps.Velocity[0]), floatSign(ps.Velocity[2])},
-	}
-	return pk
+func (ps *playerState) setPlayerAuthInputWithPlayerState(pk *packet.PlayerAuthInput){
+	pk.Pitch, pk.InteractYaw = ps.Pitch, ps.Pitch
+	pk.Yaw, pk.InteractYaw, pk.HeadYaw = ps.Yaw, ps.Yaw, ps.Yaw
+	pk.Position = ps.Position
+	pk.MoveVector = mgl32.Vec2{floatSign(ps.Velocity[0]), floatSign(ps.Velocity[2])}
+	pk.RawMoveVector = mgl32.Vec2{floatSign(ps.Velocity[0]), floatSign(ps.Velocity[2])}
+	pk.Delta = ps.Position.Sub(ps.lastTickPos)
 }
 
 func floatSign(f float32) float32 {
@@ -78,18 +50,6 @@ func floatSign(f float32) float32 {
 		return 0
 	} else {
 		return -1
-	}
-}
-
-func (ps *playerState) resetBlockActions() {
-	ps.BlockActions = ps.BlockActions[:0]
-}
-
-// Reset all bits in ps.tickInputDataFlags to 0
-func (ps *playerState) resetFlags() {
-	inputDataFlags := ps.tickInputDataFlags
-	for i := range inputDataFlags.Len(){
-		inputDataFlags.Unset(i)
 	}
 }
 
