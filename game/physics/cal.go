@@ -54,10 +54,6 @@ func AOffset(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (offset float64
 	return
 }
 
-func roundToSixteenth(val float64) float64 {
-	return math.Round(val * 16) / 16
-}
-
 func roundVecTo5Decimal(delta mgl64.Vec3) mgl64.Vec3{
 	for axis, plane := range delta{
 		delta[axis] = math.Round(plane*100000) / 100000

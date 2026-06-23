@@ -12,6 +12,7 @@ import (
 
 func (m *Movement) doMotions() {
 	m.setSlipperiness()
+	m.setOnClimb()
 	m.applyHorizontalMovement()
 	if m.isjumping {
 		m.jump()
@@ -22,9 +23,19 @@ func (m *Movement) doMotions() {
 	m.applyGravity()
 }
 
+func (m *Movement) setOnClimb(){
+	if m.state.BlockMap().Hblock(cube.PosFromVec3(m.position)).Climbable(){
+		m.onClimb = true
+	}
+}
+
 func (m *Movement) applyGravity() {
-	if !m.onGround {
+	if !m.onGround && !m.onClimb {
 		m.velocity[1] = (m.velocity[1] - 0.08) * 0.98
+		return
+	}
+	if m.onClimb && !m.isjumping{
+		m.velocity[1] = ClimbSpeed * -1
 	}
 }
 
@@ -103,6 +114,10 @@ func (m *Movement) applyHorizontalMovement() {
 }
 
 func (m *Movement) jump() {
+	if m.onClimb{
+		m.velocity[1] = ClimbSpeed
+		return
+	}
 	if m.onGround {
 		m.velocity[1] = JumpSpeed
 	}

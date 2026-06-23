@@ -13,7 +13,6 @@ import (
 )
 
 const(
-	DefaultSlipperiness    = float64(0.6)
 	AirborneSlipperiness   = float64(1)
 	SlipperinessToFriction = float64(0.91)
 	SprintMovementMult     = float64(1.3)
@@ -21,6 +20,7 @@ const(
 	JumpSpeed              = float64(0.42)
 	MomentumThreshold      = float64(0.003)
 	MaxStepHeight          = float64(0.6)
+	ClimbSpeed             = float64(0.1176)
 )
 
 type Movement struct {
@@ -30,6 +30,7 @@ type Movement struct {
     onGround     bool
     isrunning    bool
     isjumping    bool
+	onClimb      bool
 	slipperiness float64
 
     stateInWorld *physics.StateInWorld

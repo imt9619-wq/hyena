@@ -15,7 +15,7 @@ func (m *Movement) simCollision(){
 
 func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	pos, velocity = m.stateInWorld.Position, m.stateInWorld.Velocity
-	if !m.onGround || utils.DeltaIsZero(m.velocity){
+	if !m.onGround || utils.DeltaIsZero(m.velocity) || m.onClimb{
 		return
 	}
 

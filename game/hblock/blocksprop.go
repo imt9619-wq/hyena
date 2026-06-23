@@ -43,3 +43,21 @@ type Slime struct{
 func (s Slime) Slipperiness() float64{
 	return s.Friction()
 }
+
+type Ladder struct{
+	block.Ladder
+	DefaultPorp
+}
+
+func (l Ladder) Climbable() bool{
+	return true
+}
+
+type Vines struct{
+	block.Vines
+	DefaultPorp
+}
+
+func (v Vines) Climbable() bool{
+	return true
+}
