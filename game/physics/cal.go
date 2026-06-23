@@ -2,7 +2,6 @@ package physics
 
 import (
 	"iter"
-	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
@@ -54,9 +53,3 @@ func AOffset(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (offset float64
 	return
 }
 
-func roundVecTo5Decimal(delta mgl64.Vec3) mgl64.Vec3{
-	for axis, plane := range delta{
-		delta[axis] = math.Round(plane*100000) / 100000
-	}
-	return delta
-}

@@ -43,15 +43,10 @@ func NewMovement(state *game.GameState) *Movement {
 	}
 }
 
-func (m *Movement) playerPosBeforeVelocityApply() mgl64.Vec3 {
-	return m.position.Sub(m.velocity)
-}
-
 func (m *Movement) Tick() {
 	now := time.Now()
 	m.copyPlayerState()
 	m.doMotions()
-	m.applyVelocity()
 	m.simCollision()
 	m.setOnGround()
 	m.pasteToPlayerState()
@@ -72,6 +67,7 @@ func (m *Movement) copyPlayerState() {
 	ps := m.state.Player()
 	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(ps.Velocity)
 	m.position = utils.Mgl32Vec3Tomgl64Vec3(ps.Position).Sub(mgl64.Vec3{0, utils.NetworkOffset, 0})
+	m.position = utils.RoundVecTo5Decimal(m.position)
 
 	m.onGround = ps.OnGround
 }

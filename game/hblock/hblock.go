@@ -18,6 +18,10 @@ func WblockToHblock(b world.Block) Block{
 		return Slime{}
 	case block.PackedIce:
 		return PackedIce{}
+	case block.Ladder:
+		return Ladder{}
+	case block.Vines:
+		return Vines{}
 	default:
 		return DefaultPorp{}
 	}

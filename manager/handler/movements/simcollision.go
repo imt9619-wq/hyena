@@ -53,9 +53,9 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 	if m.isjumping && m.velocity[1] == JumpSpeed && stepHeight >= JumpSpeed{
 		velocityAfterStair[1] = 0
 	}
-	posBeforeVelocityApply := m.playerPosBeforeVelocityApply()
-	stepPos, stepVelocity := m.simAState(posBeforeVelocityApply.Add(mgl64.Vec3{0, stepHeight, 0}), velocityAfterStair)
-	if stepPos.Sub(posBeforeVelocityApply).Len() <= pos.Sub(posBeforeVelocityApply).Len(){
+	
+	stepPos, stepVelocity := m.simAState(m.position.Add(mgl64.Vec3{0, stepHeight, 0}), velocityAfterStair)
+	if stepPos.Sub(m.position).Len() <= pos.Sub(m.position).Len(){
 		return
 	}
 	return stepPos, stepVelocity
@@ -64,10 +64,13 @@ func (m *Movement) doStepAssist() (pos, velocity mgl64.Vec3){
 func (m *Movement) pasteStateToMovements(pos, velocity mgl64.Vec3){
 	m.velocity = velocity
 	m.position = pos
+	if mgl64.FloatEqualThreshold(m.position[1], float64(m.state.BlockMap().Dimension().Range()[0]), utils.Negligible){
+		m.position[1] = float64(m.state.BlockMap().Dimension().Range()[0])
+	}
 }
 
 func (m *Movement) doNormalCollisionThenStepAssist() (mgl64.Vec3, mgl64.Vec3){
-	m.simAState(m.playerPosBeforeVelocityApply(), m.velocity)
+	m.simAState(m.position, m.velocity)
 	return m.doStepAssist()
 }
 

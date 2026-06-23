@@ -59,3 +59,10 @@ func RoundFloat(val float64, precision uint) float64 {
     ratio := math.Pow(10, float64(precision))
     return math.Round(val * ratio) / ratio
 }
+
+func RoundVecTo5Decimal(delta mgl64.Vec3) mgl64.Vec3{
+	for axis, plane := range delta{
+		delta[axis] = math.Round(plane*100000) / 100000
+	}
+	return delta
+}

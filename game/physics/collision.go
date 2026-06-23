@@ -34,7 +34,7 @@ func (s *StateInWorld) SimState(){
 // we are going to round off player position to the last five digit as the player might be stuck(rare but possible) 
 // if they got something like Z: 88.19999694824219 and is in front of a stair
 func (s *StateInWorld) roundOffPos(){
-	s.Position = roundVecTo5Decimal(s.Position)
+	s.Position = utils.RoundVecTo5Decimal(s.Position)
 	s.AABB = s.BBoxFunc(s.Position)
 }
 
@@ -61,7 +61,7 @@ func (s *StateInWorld) getOffset(){
 	}
 	s.roundOffPos()
 	for axis := range s.Velocity{
-		if s.isHittingWallOnAxis(axis){
+		if s.isHittingBlockOnAxis(axis){
 			s.Velocity[axis] = 0
 		}
 	}
@@ -74,8 +74,8 @@ func (s *StateInWorld) getOffset(){
 	}
 }
 
-func (s *StateInWorld) isHittingWallOnAxis(axis int) bool{
-	if axis == 1 || s.Velocity[axis] == 0{
+func (s *StateInWorld) isHittingBlockOnAxis(axis int) bool{
+	if s.Velocity[axis] == 0{
 		return false
 	}
 	return utils.BBoxIntersectsSolid(s.world, utils.TinyBBoxOnBBoxFace(s.AABB, utils.FaceOnDeltaAxis(s.Velocity, axis)))

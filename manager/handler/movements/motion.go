@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -26,6 +25,8 @@ func (m *Movement) doMotions() {
 func (m *Movement) setOnClimb(){
 	if m.state.BlockMap().Hblock(cube.PosFromVec3(m.position)).Climbable(){
 		m.onClimb = true
+	}else{
+		m.onClimb = false
 	}
 }
 
@@ -36,13 +37,6 @@ func (m *Movement) applyGravity() {
 	}
 	if m.onClimb && !m.isjumping{
 		m.velocity[1] = ClimbSpeed * -1
-	}
-}
-
-func (m *Movement) applyVelocity() {
-	m.position = m.position.Add(m.velocity)
-	if mgl64.FloatEqualThreshold(m.position[1], float64(m.state.BlockMap().Dimension().Range()[0]), utils.Negligible){
-		m.position[1] = float64(m.state.BlockMap().Dimension().Range()[0])
 	}
 }
 
