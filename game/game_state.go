@@ -20,7 +20,7 @@ type GameState struct {
     blockMap           *blockmap.BlockMap
     tickInputDataFlags protocol.Bitset
     queue              chan *queueTransition
-    tick               uint64
+    tick               uint
     closed             chan struct{}
 }
 
@@ -62,7 +62,7 @@ func (gs *GameState) Tick() {
 	gs.blockMap.RefreshMapWithRenderDistance()
 }
 
-func (gs *GameState) GStick() uint64 {
+func (gs *GameState) GStick() uint {
 	return gs.tick
 }
 
@@ -70,7 +70,7 @@ func (gs *GameState) GStick() uint64 {
 // current GameState
 func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk := &packet.PlayerAuthInput{}
-	pk.Tick = gs.tick
+	pk.Tick = uint64(gs.tick)
 	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
 	pk.PlayMode = packet.PlayModeTeaser
 	pk.InteractionModel = packet.InteractionModelClassic

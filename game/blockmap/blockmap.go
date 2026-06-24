@@ -9,7 +9,7 @@ import (
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/df-mc/dragonfly/server/world/chunk"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/imt9619-wq/hyena/game/hblock"
+	"github.com/imt9619-wq/hyena/game/blockmap/hblock"
 	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -125,7 +125,7 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool)
 	chunkPos := utils.CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
-		fmt.Printf("Tried to query out of render distance blocks\n")
+		fmt.Printf("Tried to query out of render distance blocks (Cpos: %v)\n", chunkPos)
 		bl = block.InvisibleBedrock{}
 		return
 	}

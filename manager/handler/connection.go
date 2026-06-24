@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/imt9619-wq/hyena/manager/handler/movements"
+	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
