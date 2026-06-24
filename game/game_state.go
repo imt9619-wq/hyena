@@ -1,16 +1,20 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // GameState holds per-session Minecraft world data used by movement and packet output.
 // Qx should be used for most GameState opteriation just like the *world.World in dragonfly
 type GameState struct {
+	clientData         login.ClientData
 	entityRuntimeID    uint64
     player             *playerState
     blockMap           *blockmap.BlockMap
@@ -22,6 +26,7 @@ type GameState struct {
 
 func NewGameState(conn *minecraft.Conn) *GameState {
 	gs := &GameState{
+		clientData:  conn.ClientData(),
 		player:      newPlayerState(conn),
 		blockMap:    blockmap.NewBlockMap(conn),
 		tickInputDataFlags: protocol.NewBitset(packet.PlayerAuthInputBitsetSize),
@@ -29,6 +34,7 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 		closed: 	 make(chan struct{}),
 		tick:        0,
 	}
+	fmt.Printf("Rewind size: %v\n", conn.GameData().PlayerMovementSettings.RewindHistorySize)
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	gs.startRunningQueue()
 	return gs
@@ -65,9 +71,9 @@ func (gs *GameState) GStick() uint64 {
 func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk := &packet.PlayerAuthInput{}
 	pk.Tick = gs.tick
-	pk.InputMode = packet.InputModeTouch
+	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
 	pk.PlayMode = packet.PlayModeTeaser
-	pk.InteractionModel = packet.InteractionModelTouch
+	pk.InteractionModel = packet.InteractionModelClassic
 	pk.BlockActions = nil
 	pk.InputData = gs.tickInputDataFlags
 	pk.ItemInteractionData = protocol.UseItemTransactionData{}

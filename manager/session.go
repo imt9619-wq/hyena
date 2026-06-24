@@ -2,6 +2,7 @@ package manager
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -41,6 +42,8 @@ func (s *Session) run() {
 			var disc minecraft.DisconnectError
 			if errors.As(err, &disc) {
 				conn.NotifyDisconnect(disc.Error())
+			}else{
+				conn.NotifyDisconnect(fmt.Sprintf("Error occured: %v\n", err))
 			}
 			return
 		}

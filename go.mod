@@ -3,16 +3,16 @@ module github.com/imt9619-wq/hyena
 go 1.26.1
 
 require (
-	github.com/df-mc/dragonfly v0.10.14
+	github.com/df-mc/dragonfly v0.10.13
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
-	github.com/sandertv/gophertunnel v1.57.0
+	github.com/sandertv/gophertunnel v1.56.2
 	golang.org/x/oauth2 v0.36.0
 )
 
 require (
 	github.com/brentp/intintmap v0.0.0-20251106190759-56907b1f8479 // indirect
-	github.com/coreos/go-oidc/v3 v3.18.0 // indirect
+	github.com/coreos/go-oidc/v3 v3.19.0 // indirect
 	github.com/df-mc/go-playfab v1.0.0 // indirect
 	github.com/df-mc/go-xsapi v1.0.1 // indirect
 	github.com/df-mc/goleveldb v1.1.9 // indirect

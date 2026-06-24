@@ -8,10 +8,9 @@ import (
 )
 
 type StateInWorld struct{
-    Velocity mgl64.Vec3
-    Position mgl64.Vec3
-	BBoxFunc utils.BBoxFunc
-    AABB     cube.BBox
+    velocity mgl64.Vec3
+    position mgl64.Vec3
+    aaBB     cube.BBox
 
     world      *blockmap.BlockMap
     scratch    *phyScratch
@@ -24,64 +23,82 @@ func NewStateInWorld(world *blockmap.BlockMap) *StateInWorld{
 	return s
 }
 
-// simState will use the given aabb, velocity, position and simulate the newState which the newState will 
-// replace the old one
-func (s *StateInWorld) SimState(){
-	s.getOffset()
-	s.simOffset()
+type InPhyState struct{
+	Velocity mgl64.Vec3
+    Position mgl64.Vec3
+	BBoxFunc utils.BBoxFunc
 }
 
 // we are going to round off player position to the last five digit as the player might be stuck(rare but possible) 
 // if they got something like Z: 88.19999694824219 and is in front of a stair
-func (s *StateInWorld) roundOffPos(){
-	s.Position = utils.RoundVecTo5Decimal(s.Position)
-	s.AABB = s.BBoxFunc(s.Position)
-	s.Velocity = utils.RemoveDeltaEpsilon(s.Velocity)
+func (s *StateInWorld) copyInPhyState(state InPhyState){
+	s.position = utils.RoundVecTo5Decimal(state.Position)
+	s.aaBB = state.BBoxFunc(s.position)
+	s.velocity = utils.RemoveDeltaEpsilon(state.Velocity)
+}
+
+type OutPhyState struct{
+	Velocity mgl64.Vec3
+	Position mgl64.Vec3
+	AABB     cube.BBox
+}
+
+func (s *StateInWorld) outPhyState() OutPhyState{
+	return OutPhyState{
+		Velocity: s.velocity,
+		Position: s.position,
+		AABB: s.aaBB,
+	}
+}
+
+// simState will use the given aabb, velocity, position and simulate the newState which the newState will 
+// replace the old one
+func (s *StateInWorld) SimState(state InPhyState) OutPhyState{
+	s.copyInPhyState(state)
+	s.getOffset()
+	s.simOffset()
+	return s.outPhyState()
 }
 
 func (s *StateInWorld) simOffset(){
-	if utils.DeltaIsZero(s.Velocity){
+	if utils.DeltaIsZero(s.velocity){
 		return
 	}
 	offsets := s.scratch.offsets.offsetArr()
 	var radio float64
-	deltas := s.Velocity
+	deltas := s.velocity
 	for axis, minRadio := range utils.MinOffset(offsets, deltas){
 		radio = minRadio
 		if radio != 1{
-			s.Velocity[axis] = 0	
+			s.velocity[axis] = 0	
 		}	
 	}
 
-	s.Position = s.Position.Add(deltas.Mul(radio))
+	s.position = s.position.Add(deltas.Mul(radio))
 }
 
 func (s *StateInWorld) getOffset(){
-	if utils.DeltaIsZero(s.Velocity){
+	if utils.DeltaIsZero(s.velocity){
 		return
 	}
-	s.roundOffPos()
-	for axis := range s.Velocity{
+	
+	for axis := range s.velocity{
 		if s.isHittingBlockOnAxis(axis){
-			s.Velocity[axis] = 0
+			s.velocity[axis] = 0
 		}
 	}
 	bm := s.world
-	s.scratch.offsets.reset(s.Velocity)
-	for pos, model := range s.scratch.SweptBlockModels(s.AABB, s.Velocity, bm) {
+	s.scratch.offsets.reset(s.velocity)
+	for pos, model := range s.scratch.SweptBlockModels(s.aaBB, s.velocity, bm) {
 		for _, blockBox := range utils.BBoxes(model, pos, bm) {
-			s.scratch.offsets.considerOffsets(s.AABB, blockBox, s.Velocity)
+			s.scratch.offsets.considerOffsets(s.aaBB, blockBox, s.velocity)
 		}
 	}
 }
 
 func (s *StateInWorld) isHittingBlockOnAxis(axis int) bool{
-	if s.Velocity[axis] == 0{
+	if s.velocity[axis] == 0{
 		return false
 	}
-	return utils.BBoxIntersectsSolid(s.world, utils.TinyBBoxOnBBoxFace(s.AABB, utils.FaceOnDeltaAxis(s.Velocity, axis)))
-}
-
-func (s *StateInWorld) Scratch() *phyScratch{
-	return s.scratch
+	return utils.BBoxIntersectsSolid(s.world, utils.TinyBBoxOnBBoxFace(s.aaBB, utils.FaceOnDeltaAxis(s.velocity, axis)))
 }
