@@ -32,7 +32,7 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 	pBBoxInStairs = pBBoxInStairs.Extend(walkStairVelocity.Mul(utils.ProbeOffset/walkStairVelocity.Len()))
 	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, MaxStepHeight)
 
-	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.state.BlockMap()){
+	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.world){
 		if pBBoxInStairs.IntersectsWith(blockBox){
 			if blockBox.Min()[1] >= op.AABB.Max()[1]{
 				ceilHeight = min(ceilHeight, blockBox.Min()[1]-op.AABB.Max()[1])
@@ -60,8 +60,8 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 func (m *Movement) pasteStateToMovements(pos, velocity mgl64.Vec3){
 	m.velocity = velocity
 	m.position = pos
-	if mgl64.FloatEqualThreshold(m.position[1], float64(m.state.BlockMap().Dimension().Range()[0]), utils.Negligible){
-		m.position[1] = float64(m.state.BlockMap().Dimension().Range()[0])
+	if mgl64.FloatEqualThreshold(m.position[1], float64(m.world.Dimension().Range()[0]), utils.Negligible){
+		m.position[1] = float64(m.world.Dimension().Range()[0])
 	}
 }
 

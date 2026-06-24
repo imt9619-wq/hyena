@@ -2,13 +2,15 @@ package game
 
 import (
 	"fmt"
+	"time"
 
-	"github.com/go-gl/mathgl/mgl32"
+	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/imt9619-wq/hyena/game/blockmap"
+	"github.com/imt9619-wq/hyena/game/movements"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // GameState holds per-session Minecraft world data used by movement and packet output.
@@ -19,6 +21,8 @@ type GameState struct {
     player             *playerState
     blockMap           *blockmap.BlockMap
     tickInputDataFlags protocol.Bitset
+	nextTickInMove     *movements.InMovement
+	movement           *movements.Movement
     queue              chan *queueTransition
     tick               uint
     closed             chan struct{}
@@ -29,12 +33,14 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 		clientData:  conn.ClientData(),
 		player:      newPlayerState(conn),
 		blockMap:    blockmap.NewBlockMap(conn),
-		tickInputDataFlags: protocol.NewBitset(packet.PlayerAuthInputBitsetSize),
 		queue:       make(chan *queueTransition, 512),
 		closed: 	 make(chan struct{}),
 		tick:        0,
 	}
 	fmt.Printf("Rewind size: %v\n", conn.GameData().PlayerMovementSettings.RewindHistorySize)
+	gs.resetFlags()
+	gs.movement = movements.NewMovement(gs.blockMap)
+	gs.nextTickInMove = &movements.InMovement{}
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	gs.startRunningQueue()
 	return gs
@@ -55,49 +61,41 @@ func (gs *GameState) EntityRunTimeId() uint64 {
 
 func (gs *GameState) Tick() {
 	gs.tick++
-	gs.resetFlags()
 	gs.setInputFlagBlockBreakingDelayEnabled()
 	gs.player.tick()
 	gs.blockMap.UpdateChunkCentre(gs.player.Position)
 	gs.blockMap.RefreshMapWithRenderDistance()
+	gs.doMovement()
+}
+
+func (gs *GameState) doMovement(){
+	now := time.Now()
+	out := gs.movement.SimMovementWithFlag(gs.splitInMovement(), &gs.tickInputDataFlags)
+	gs.nextTickInMove = &movements.InMovement{}
+	out.CopyOutToIn(gs.nextTickInMove)
+	gs.copyOutMovement(out)
+	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position, gs.player.Velocity, gs.player.OnGround)
+	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
+	fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
+}
+
+func (gs *GameState) splitInMovement() *movements.InMovement{
+	in := gs.nextTickInMove
+	in.Position = gs.player.Position
+	in.OnGround = gs.player.OnGround
+	in.Velocity = gs.player.Velocity
+	in.Yaw = gs.player.Yaw
+	return in
+}
+
+func (gs *GameState) copyOutMovement(out movements.OutMovement){
+	ps := gs.player
+	ps.Yaw = out.Yaw
+	ps.Position = out.Position
+	ps.Velocity = out.Velocity
+	ps.OnGround = out.OnGround
 }
 
 func (gs *GameState) GStick() uint {
 	return gs.tick
-}
-
-// return a pointer to PlayerAuthInput packet where the fields are filled out based on the 
-// current GameState
-func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
-	pk := &packet.PlayerAuthInput{}
-	pk.Tick = uint64(gs.tick)
-	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
-	pk.PlayMode = packet.PlayModeTeaser
-	pk.InteractionModel = packet.InteractionModelClassic
-	pk.BlockActions = nil
-	pk.InputData = gs.tickInputDataFlags
-	pk.ItemInteractionData = protocol.UseItemTransactionData{}
-	pk.ItemStackRequest = protocol.ItemStackRequest{}
-	pk.VehicleRotation = mgl32.Vec2{}
-	pk.ClientPredictedVehicle = 0
-	pk.AnalogueMoveVector = mgl32.Vec2{}
-	pk.CameraOrientation = mgl32.Vec3{}
-	gs.Player().setPlayerAuthInputWithPlayerState(pk)
-	return pk
-}
-
-func (gs *GameState) SetFlag(flag int){
-	gs.tickInputDataFlags.Set(flag)
-}
-
-// Reset all bits in ps.tickInputDataFlags to 0
-func (gs *GameState) resetFlags() {
-	inputDataFlags := gs.tickInputDataFlags
-	for i := range inputDataFlags.Len(){
-		inputDataFlags.Unset(i)
-	}
-}
-
-func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
-	gs.SetFlag(packet.InputFlagBlockBreakingDelayEnabled)
 }

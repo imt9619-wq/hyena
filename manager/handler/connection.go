@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -14,7 +13,6 @@ import (
 type Connection struct {
 	*minecraft.Conn
 	handler   Handler
-	movement  *movements.Movement
 	closeOnce *sync.Once
 	closed    chan struct{}
 	state     *game.GameState
@@ -28,25 +26,24 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		closeOnce: &sync.Once{},
 	}
 	c.state = game.NewGameState(conn)
-	c.movement = movements.NewMovement(c.state)
 	c.startTicking()
 	return c
 }
 
 func (c *Connection) StartRunning() {
-	c.movement.StartRunning()
+	c.state.StartRunning()
 }
 
 func (c *Connection) StopRunning() {
-	c.movement.StopRunning()
+	c.state.StopRunning()
 }
 
 func (c *Connection) StartJumping() {
-	c.movement.StartJumping()
+	c.state.StartJumping()
 }
 
 func (c *Connection) StopJumping() {
-	c.movement.StopJumping()
+	c.state.StopJumping()
 }
 
 func (c *Connection) SetHandler(h Handler) {

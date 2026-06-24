@@ -21,7 +21,7 @@ func main() {
 		// play.venitymc.com:19132
 		// 127.0.0.1:19134
 		// 127.0.0.1:19135
-		if err := acc.JoinServer("127.0.0.1:19134", handler.DefaultHandler{}); err != nil {
+		if err := acc.JoinServer("127.0.0.1:19135", handler.DefaultHandler{}); err != nil {
 			fmt.Println(err)
 		}
 	}()

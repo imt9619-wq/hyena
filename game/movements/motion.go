@@ -5,7 +5,6 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/imt9619-wq/hyena/game"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -23,7 +22,7 @@ func (m *Movement) doMotions() {
 }
 
 func (m *Movement) setOnClimb(){
-	if m.state.BlockMap().Hblock(cube.PosFromVec3(m.position)).Climbable(){
+	if m.world.Hblock(cube.PosFromVec3(m.position)).Climbable(){
 		m.onClimb = true
 	}else{
 		m.onClimb = false
@@ -40,7 +39,7 @@ func (m *Movement) applyGravity() {
 	}
 }
 
-func (m *Movement) StartRunning() {
+/*func (m *Movement) StartRunning() {
 	if m.isrunning {
 		return
 	}
@@ -80,14 +79,14 @@ func (m *Movement) StopJumping() {
 		m.isjumping = false
 		m.state.SetFlag(packet.InputFlagJumpReleasedRaw)
 	})
-}
+}*/
 
 func (m *Movement) setSlipperiness() {
 	if !m.onGround {
 		m.slipperiness = AirborneSlipperiness
 		return
 	}
-	bl := m.state.BlockMap().Hblock(cube.PosFromVec3(m.position.Sub(mgl64.Vec3{0, 0.5, 0})))
+	bl := m.world.Hblock(cube.PosFromVec3(m.position.Sub(mgl64.Vec3{0, 0.5, 0})))
 	m.slipperiness = bl.Slipperiness()
 }
 
@@ -119,13 +118,12 @@ func (m *Movement) jump() {
 	if m.onGround {
 		m.velocity[1] = JumpSpeed
 	}
-	m.state.SetFlag(packet.InputFlagJumping)
-	m.state.SetFlag(packet.InputFlagJumpCurrentRaw)
+	m.setFlag(packet.InputFlagJumping)
+	m.setFlag(packet.InputFlagJumpCurrentRaw)
 }
 
 func (m *Movement) run() {
-	ps := m.state.Player()
-	yawRad := float64(ps.Yaw) * (math.Pi / 180)
+	yawRad := m.yaw * (math.Pi / 180)
 	sinD := math.Sin(yawRad)
 	cosD := math.Cos(yawRad)
 
@@ -144,5 +142,5 @@ func (m *Movement) run() {
 		m.velocity[2] += SprintJumpBoost * cosD
 	}
 
-	m.state.SetFlag(packet.InputFlagSprinting)
+	m.setFlag(packet.InputFlagSprinting)
 }

@@ -12,9 +12,8 @@ func (c *Connection) tick() {
 
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
-	c.movement.Tick()
 	c.requestSubChunkInQuery()
-	c.WritePacket(c.state.PlayerAuthInputWithState())
+	c.WritePacket(c.state.PlayerAuthInputWithStateNResetFlags())
 }
 
 func (c *Connection) startTicking() {
