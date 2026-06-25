@@ -15,6 +15,7 @@ func defaultClientData() login.ClientData{
 	cd := login.ClientData{}
 	cd.DefaultInputMode, cd.CurrentInputMode = packet.InputModeTouch, packet.InputModeMouse 
 	cd.DeviceOS = protocol.DeviceAndroid
+	cd.MemoryTier = 1
 	return cd
 }
 

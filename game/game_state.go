@@ -17,15 +17,17 @@ import (
 // Qx should be used for most GameState opteriation just like the *world.World in dragonfly
 type GameState struct {
 	clientData         login.ClientData
-	entityRuntimeID    uint64
-    player             *playerState
+    entityRuntimeID    uint64
     blockMap           *blockmap.BlockMap
     tickInputDataFlags protocol.Bitset
-	nextTickInMove     *movements.InMovement
-	movement           *movements.Movement
-    queue              chan *queueTransition
-    tick               uint
-    closed             chan struct{}
+
+    player   *playerState
+    movement *movements.Movement
+    moveBuf  *moveBuf
+
+    queue  chan *queueTransition
+    tick   uint
+    closed chan struct{}
 }
 
 func NewGameState(conn *minecraft.Conn) *GameState {
@@ -33,6 +35,7 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 		clientData:  conn.ClientData(),
 		player:      newPlayerState(conn),
 		blockMap:    blockmap.NewBlockMap(conn),
+		moveBuf:     newMoveBuf(conn),
 		queue:       make(chan *queueTransition, 512),
 		closed: 	 make(chan struct{}),
 		tick:        0,
@@ -40,7 +43,6 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	fmt.Printf("Rewind size: %v\n", conn.GameData().PlayerMovementSettings.RewindHistorySize)
 	gs.resetFlags()
 	gs.movement = movements.NewMovement(gs.blockMap)
-	gs.nextTickInMove = &movements.InMovement{}
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	gs.startRunningQueue()
 	return gs
@@ -71,24 +73,25 @@ func (gs *GameState) Tick() {
 func (gs *GameState) doMovement(){
 	now := time.Now()
 	out := gs.movement.SimMovementWithFlag(gs.splitInMovement(), &gs.tickInputDataFlags)
-	gs.nextTickInMove = &movements.InMovement{}
-	out.CopyOutToIn(gs.nextTickInMove)
 	gs.copyOutMovement(out)
+	gs.moveBuf.addTick(out)
 	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position, gs.player.Velocity, gs.player.OnGround)
 	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
 	fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
 }
 
 func (gs *GameState) splitInMovement() *movements.InMovement{
-	in := gs.nextTickInMove
+	in := &movements.InMovement{}
 	in.Position = gs.player.Position
 	in.OnGround = gs.player.OnGround
 	in.Velocity = gs.player.Velocity
 	in.Yaw = gs.player.Yaw
+	in.Isjumping = gs.player.isJumping
+	in.Isrunning = gs.player.isRunning
 	return in
 }
 
-func (gs *GameState) copyOutMovement(out movements.OutMovement){
+func (gs *GameState) copyOutMovement(out *movements.OutMovement){
 	ps := gs.player
 	ps.Yaw = out.Yaw
 	ps.Position = out.Position

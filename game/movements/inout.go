@@ -10,9 +10,10 @@ type aMovement struct {
 	Position  mgl32.Vec3
 	Velocity  mgl32.Vec3
 	Yaw       float32
+	Pitch     float32
+	OnGround  bool
 	Isrunning bool
 	Isjumping bool
-	OnGround  bool
 }
 
 type InMovement aMovement
@@ -29,8 +30,8 @@ func (m *Movement) copyInMovement(in *InMovement) {
 
 type OutMovement aMovement
 
-func (m *Movement) splitOutMovement() OutMovement{
-	out := OutMovement{}
+func (m *Movement) splitOutMovement() *OutMovement{
+	out := &OutMovement{}
 	out.Velocity = utils.Mgl64Vec3Tomgl32Vec3(m.velocity)
 	out.Position = utils.Mgl64Vec3Tomgl32Vec3(m.position.Add(mgl64.Vec3{0, utils.NetworkOffset, 0}))
 	out.OnGround = m.onGround 
@@ -40,8 +41,12 @@ func (m *Movement) splitOutMovement() OutMovement{
 	return out
 }
 
-// all input from out will be pasted to in(onground, velocity, pos will not be pasted)
-func (out OutMovement) CopyOutToIn(in *InMovement){
+func (out *OutMovement) CopyOutToIn(in *InMovement){
 	in.Isjumping = out.Isjumping
 	in.Isrunning = out.Isrunning
+	in.Position = out.Position
+	in.Velocity = out.Velocity
+	in.Yaw = out.Yaw
+	in.OnGround = out.OnGround
+	in.Pitch = out.Pitch
 }

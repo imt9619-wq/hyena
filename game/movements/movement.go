@@ -25,14 +25,14 @@ type Movement struct {
 	world        *blockmap.BlockMap
     position     mgl64.Vec3
     velocity     mgl64.Vec3
-	yaw          float64
+    yaw          float64
     onGround     bool
     isrunning    bool
     isjumping    bool
-	onClimb      bool
-	slipperiness float64
+    onClimb      bool
+    slipperiness float64
 
-	flag *protocol.Bitset
+    flag         *protocol.Bitset
     stateInWorld *physics.StateInWorld
 }
 
@@ -43,7 +43,7 @@ func NewMovement(world *blockmap.BlockMap) *Movement {
 	}
 }
 
-func (m *Movement) SimMovementWithFlag(in *InMovement, flag *protocol.Bitset) OutMovement{
+func (m *Movement) SimMovementWithFlag(in *InMovement, flag *protocol.Bitset) *OutMovement{
 	m.flag = flag
 	m.copyInMovement(in)
 	m.doMotions()
@@ -52,7 +52,7 @@ func (m *Movement) SimMovementWithFlag(in *InMovement, flag *protocol.Bitset) Ou
 	return m.splitOutMovement()
 }
 
-func (m *Movement) SimMovement(in *InMovement) OutMovement{
+func (m *Movement) SimMovement(in *InMovement) *OutMovement{
 	return m.SimMovementWithFlag(in, nil)
 }
 

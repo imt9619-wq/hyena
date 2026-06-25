@@ -49,30 +49,30 @@ func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
 
 func (gs *GameState) StartRunning() {
 	gs.Exec(func(q *Qx) {
-		if gs.nextTickInMove.Isrunning {
+		if gs.player.isRunning {
 			return
 		}
-		gs.nextTickInMove.Isrunning = true
+		gs.player.isRunning = true
 		gs.SetFlag(packet.InputFlagStartSprinting)
 	})
 }
 
 func (gs *GameState) StopRunning() {
 	gs.Exec(func(q *Qx) {
-		if !gs.nextTickInMove.Isrunning {
+		if !gs.player.isRunning {
 			return
 		}
-		gs.nextTickInMove.Isrunning = false
+		gs.player.isRunning = false
 		gs.SetFlag(packet.InputFlagStopSprinting)
 	})
 }
 
 func (gs *GameState) StartJumping() {
 	gs.Exec(func(q *Qx) {
-		if gs.nextTickInMove.Isjumping{
+		if gs.player.isJumping{
 			return
 		}
-		gs.nextTickInMove.Isjumping = true
+		gs.player.isJumping = true
 		gs.SetFlag(packet.InputFlagJumpPressedRaw)
 		gs.SetFlag(packet.InputFlagJumpCurrentRaw)
 		gs.SetFlag(packet.InputFlagStartJumping)
@@ -81,10 +81,10 @@ func (gs *GameState) StartJumping() {
 
 func (gs *GameState) StopJumping() {
 	gs.Exec(func(q *Qx) {
-		if !gs.nextTickInMove.Isjumping{
+		if !gs.player.isJumping{
 			return
 		}
-		gs.nextTickInMove.Isjumping = false
+		gs.player.isJumping = false
 		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
 	})
 }

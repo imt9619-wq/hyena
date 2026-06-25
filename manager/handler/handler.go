@@ -20,6 +20,7 @@ type Handler interface {
 	OnSetActorMotion(*Context, *packet.SetActorMotion)
 	OnUpdateBlock(*Context, *packet.UpdateBlock)
 	OnMovePlayer(*Context, *packet.MovePlayer)
+	OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction)
 }
 
 type DefaultHandler struct{}
@@ -36,6 +37,7 @@ func (h DefaultHandler) OnJoin(c *Connection) {
 	c.StartJumping()
 }
 
+func (h DefaultHandler) OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction){}
 func (h DefaultHandler) OnNetworkStackLatency(*Context, *packet.NetworkStackLatency){}
 func (h DefaultHandler) OnMoveActorAbsolute(*Context, *packet.MoveActorAbsolute){}
 func (h DefaultHandler) OnLevelChunk(*Context, *packet.LevelChunk){}

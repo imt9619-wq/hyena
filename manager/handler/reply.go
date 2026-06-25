@@ -160,3 +160,11 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 		c.state.SetFlag(packet.InputFlagHandledTeleport)
 	})
 }
+
+func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMovePrediction){
+	ctx := event.C(c)
+	if c.handler.OnCorrectPlayerMovePrediction(ctx, pk); ctx.Cancelled() {
+		return
+	}
+	c.state.ReSimMovements(pk)
+}

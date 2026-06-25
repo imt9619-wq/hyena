@@ -10,12 +10,15 @@ import (
 
 type playerState struct {
 	Position mgl32.Vec3
-	Pitch    float32
-	Yaw      float32
-	Velocity mgl32.Vec3
-	OnGround bool
-	
-	lastTickPos mgl32.Vec3
+    Pitch    float32
+    Yaw      float32
+    Velocity mgl32.Vec3
+    OnGround bool
+
+    isJumping bool
+	isRunning bool
+
+    lastTickPos mgl32.Vec3
 }
 
 func newPlayerState(conn *minecraft.Conn) *playerState {
