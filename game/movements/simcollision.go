@@ -28,8 +28,13 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 			walkStairVelocity[axis] = 0
 		}
 	}
+	var veloLen float64 = 1
+	zeroVelo := mgl64.Vec3{}
+	if walkStairVelocity != zeroVelo{
+		veloLen = walkStairVelocity.Len()
+	}
 	pBBoxInStairs := utils.PlayerBBox(op.Position)
-	pBBoxInStairs = pBBoxInStairs.Extend(walkStairVelocity.Mul(utils.ProbeOffset/walkStairVelocity.Len()))
+	pBBoxInStairs = pBBoxInStairs.Extend(walkStairVelocity.Mul(utils.ProbeOffset/veloLen))
 	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, MaxStepHeight)
 
 	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.world){

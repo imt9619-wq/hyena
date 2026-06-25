@@ -6,7 +6,7 @@ import (
 	"github.com/imt9619-wq/hyena/utils"
 )
 
-type aMovement struct {
+type AMovement struct {
 	Position  mgl32.Vec3
 	Velocity  mgl32.Vec3
 	Yaw       float32
@@ -16,7 +16,7 @@ type aMovement struct {
 	Isjumping bool
 }
 
-type InMovement aMovement
+type InMovement AMovement
 
 func (m *Movement) copyInMovement(in *InMovement) {
 	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(in.Velocity)
@@ -28,7 +28,7 @@ func (m *Movement) copyInMovement(in *InMovement) {
 	m.isrunning = in.Isrunning
 }
 
-type OutMovement aMovement
+type OutMovement AMovement
 
 func (m *Movement) splitOutMovement() *OutMovement{
 	out := &OutMovement{}
@@ -41,9 +41,8 @@ func (m *Movement) splitOutMovement() *OutMovement{
 	return out
 }
 
+// doesnt copy input state
 func (out *OutMovement) CopyOutToIn(in *InMovement){
-	in.Isjumping = out.Isjumping
-	in.Isrunning = out.Isrunning
 	in.Position = out.Position
 	in.Velocity = out.Velocity
 	in.Yaw = out.Yaw

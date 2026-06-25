@@ -12,7 +12,7 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk := &packet.PlayerAuthInput{}
 	pk.Tick = uint64(gs.tick)
 	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
-	pk.PlayMode = packet.PlayModeTeaser
+	pk.PlayMode = packet.PlayModeNormal
 	pk.InteractionModel = packet.InteractionModelClassic
 	pk.BlockActions = nil
 	pk.InputData = gs.tickInputDataFlags

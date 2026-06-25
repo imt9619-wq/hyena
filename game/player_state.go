@@ -38,7 +38,7 @@ func (ps *playerState) tick() {
 }
 
 func (ps *playerState) setPlayerAuthInputWithPlayerState(pk *packet.PlayerAuthInput){
-	pk.Pitch, pk.InteractYaw = ps.Pitch, ps.Pitch
+	pk.Pitch, pk.InteractPitch = ps.Pitch, ps.Pitch
 	pk.Yaw, pk.InteractYaw, pk.HeadYaw = ps.Yaw, ps.Yaw, ps.Yaw
 	pk.Position = ps.Position
 	pk.MoveVector = mgl32.Vec2{floatSign(ps.Velocity[0]), floatSign(ps.Velocity[2])}
@@ -70,10 +70,13 @@ func (ps *playerState) sinNCosOfSpeed() (sinD, cosD float32) {
 	return
 }
 
-func (ps *playerState) SetSpeedTo(s float32) {
+func (ps *playerState) SpeedToVelocity(s float32) mgl32.Vec3{
 	sinD, cosD := ps.sinNCosOfSpeed()
-	ps.Velocity[0] = s*sinD
-	ps.Velocity[2] = s*cosD
+	velocity := mgl32.Vec3{}
+	velocity[0] = s*sinD
+	velocity[2] = s*cosD
+	velocity[1] = ps.Velocity[1]
+	return velocity
 }
 
 func (gs *GameState) Player() *playerState {

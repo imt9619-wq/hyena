@@ -18,7 +18,7 @@ func (c *Connection) requestSubChunkInQuery() {
 		offsets := make([]protocol.SubChunkOffset, 0, r.Height()>>4)
 		var pos int32
 		for cpos, chunkSub := range query{
-			offsets = offsets[0:]
+			offsets = offsets[:0]
 			for subPos := range chunkSub {
 				pos = subPos
 				break

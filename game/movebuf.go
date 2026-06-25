@@ -1,13 +1,8 @@
 package game
 
 import (
-	"iter"
-
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/movements"
-	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type moveBuf struct {
@@ -52,44 +47,27 @@ func (mb *moveBuf) outMoveWithTick(tick uint) (*movements.OutMovement, bool){
 	return nil, false
 }
 
-func (mb *moveBuf) iterFromTick(startTick uint) iter.Seq2[uint, *movements.OutMovement]{
-	return func(yield func(uint, *movements.OutMovement) bool) {
-		if mb.bufSize == 0 || len(mb.buf) == 0{
-			return
-		}
-		if mb.firstTickInBuf <= startTick && mb.lastTickInBuf >= startTick && len(mb.buf) != 0{
-			for ind := startTick; ind <= mb.lastTickInBuf; ind++{
-				if !yield(ind-mb.firstTickInBuf, mb.buf[ind-mb.firstTickInBuf]){
-					return 
-				}
-			}
-			return 
-		}
-	}
-}
-
-func (gs *GameState) ReSimMovements(pk *packet.CorrectPlayerMovePrediction){
+func (gs *GameState) ReSimMovements(startTick uint, reSimMove *movements.AMovement){
 	mb := gs.moveBuf
-	startTick := uint(pk.Tick)
 	currInMove := &movements.InMovement{}
-	yaw, _:= utils.RotationToPitchAndYaw(mgl32.Vec3{pk.Rotation[0], 0, pk.Rotation[1]}) 
-	_, ok := mb.outMoveWithTick(gs.tick)
+	_, ok := mb.outMoveWithTick(startTick)
 	if !ok || gs.tick == startTick{
-		gs.player.Position = pk.Position
-		gs.player.OnGround = pk.OnGround
-		gs.player.Yaw = yaw
+		gs.player.Position = reSimMove.Position
+		gs.player.Velocity = reSimMove.Velocity
+		gs.player.OnGround = reSimMove.OnGround
+		gs.player.Yaw = reSimMove.Yaw
 		return
 	}
-	var newOut *movements.OutMovement
+	currOut := mb.buf[startTick-mb.firstTickInBuf]
+	currOut.Position = reSimMove.Position
+	currOut.Velocity = reSimMove.Velocity
+	currOut.OnGround = reSimMove.OnGround
+	currOut.Yaw = reSimMove.Yaw
 	for currTick := startTick; currTick < mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
 		currOut := mb.buf[ind]
-		currOut.Position = pk.Position
-		currOut.OnGround = pk.OnGround
-		currOut.Yaw = yaw
 		currOut.CopyOutToIn(currInMove)
-		newOut = gs.movement.SimMovement(currInMove)
-		mb.buf[ind+1] = newOut
+		mb.buf[ind+1] = gs.movement.SimMovement(currInMove)
 	}
 	lastTickOut := mb.buf[mb.lastTickInBuf-mb.firstTickInBuf]
 	gs.copyOutMovement(lastTickOut)

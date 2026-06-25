@@ -4,6 +4,7 @@ import (
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -84,7 +85,7 @@ func (c *Connection) replyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPub
 	}
 	posInMgl32 := utils.ProtocolPosToMgl32Vec3(pk.Position)
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().UpdateChunkRadius(int32(pk.Radius))
+		c.state.BlockMap().UpdateChunkRadius(int32(pk.Radius>>4))
 		c.state.BlockMap().UpdateChunkCentre(posInMgl32)
 	})
 }
@@ -111,7 +112,14 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 		switch an := attribute.Name; an {
 		case "minecraft:movement":
 			c.state.Exec(func(q *game.Qx) {
-				c.state.Player().SetSpeedTo(attribute.Value)
+				simMove := &movements.AMovement{
+					Position: c.state.Player().Position,
+					OnGround: c.state.Player().OnGround,
+					Yaw: c.state.Player().Yaw,
+					Pitch: c.state.Player().Pitch,
+					Velocity: c.state.Player().SpeedToVelocity(attribute.Value),
+				}
+				c.state.ReSimMovements(uint(pk.Tick), simMove)
 			})
 		}
 	}
@@ -126,7 +134,14 @@ func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
 		return
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Player().Velocity = pk.Velocity
+		simMove := &movements.AMovement{
+			Position: c.state.Player().Position,
+			OnGround: c.state.Player().OnGround,
+			Yaw: c.state.Player().Yaw,
+			Pitch: c.state.Player().Pitch,
+			Velocity: pk.Velocity,
+		}
+		c.state.ReSimMovements(uint(pk.Tick), simMove)
 	})
 }
 
@@ -149,12 +164,14 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 		return
 	}
 
-	ps := c.state.Player()
 	c.state.Exec(func(q *game.Qx) {
-		ps.Position = pk.Position
-		ps.Pitch, ps.Yaw = pk.Pitch, pk.HeadYaw
-		ps.OnGround = pk.OnGround
-		ps.Velocity = mgl32.Vec3{}
+		simMove := &movements.AMovement{
+			Position: pk.Position,
+			OnGround: pk.OnGround,
+			Yaw: pk.HeadYaw,
+			Pitch: pk.Pitch,
+		}
+		c.state.ReSimMovements(uint(pk.Tick), simMove)
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
 		c.state.SetFlag(packet.InputFlagHandledTeleport)
@@ -166,5 +183,17 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 	if c.handler.OnCorrectPlayerMovePrediction(ctx, pk); ctx.Cancelled() {
 		return
 	}
-	c.state.ReSimMovements(pk)
+	if pk.PredictionType == packet.PredictionTypePlayer{
+		yaw, _ := utils.RotationToPitchAndYaw(mgl32.Vec3{pk.Rotation[0], 0 , pk.Rotation[1]})
+		c.state.Exec(func(q *game.Qx) {
+			simMove := &movements.AMovement{
+				Position: pk.Position,
+				Velocity: c.state.Player().Velocity,
+				Pitch: c.state.Player().Pitch,
+				OnGround: pk.OnGround,
+				Yaw: yaw,
+			}
+			c.state.ReSimMovements(uint(pk.Tick), simMove)
+		})
+	}
 }
