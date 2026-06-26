@@ -30,28 +30,6 @@ func (c *Connection) replyNetworkStackLatency(pk *packet.NetworkStackLatency) {
 	c.requestNetworkStackLatency(pk)
 }
 
-func (c *Connection) replyMoveActorAbsolute(pk *packet.MoveActorAbsolute) {
-	ctx := event.C(c)
-	if c.handler.OnMoveActorAbsolute(ctx, pk); ctx.Cancelled() {
-		return
-	}
-	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
-		return
-	}
-	yaw, pitch := utils.RotationToPitchAndYaw(pk.Rotation)
-	ps := c.state.Player()
-
-	c.state.Exec(func(q *game.Qx) {
-		ps.Position = pk.Position
-		ps.Velocity = mgl32.Vec3{0, 0, 0}
-		ps.Pitch = pitch
-		ps.Yaw = yaw
-		c.state.BlockMap().UpdateChunkCentre(pk.Position)
-		c.state.BlockMap().RefreshMapWithRenderDistance()
-		c.state.SetFlag(packet.InputFlagHandledTeleport)
-	})
-}
-
 func (c *Connection) replyLevelChunk(pk *packet.LevelChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
@@ -112,14 +90,9 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 		switch an := attribute.Name; an {
 		case "minecraft:movement":
 			c.state.Exec(func(q *game.Qx) {
-				simMove := &movements.AMovement{
-					Position: c.state.Player().Position,
-					OnGround: c.state.Player().OnGround,
-					Yaw: c.state.Player().Yaw,
-					Pitch: c.state.Player().Pitch,
-					Velocity: c.state.Player().SpeedToVelocity(attribute.Value),
-				}
-				c.state.ReSimMovements(uint(pk.Tick), simMove)
+				c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
+					a.BaseSpeed = attribute.Value
+				})
 			})
 		}
 	}
@@ -134,14 +107,10 @@ func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
 		return
 	}
 	c.state.Exec(func(q *game.Qx) {
-		simMove := &movements.AMovement{
-			Position: c.state.Player().Position,
-			OnGround: c.state.Player().OnGround,
-			Yaw: c.state.Player().Yaw,
-			Pitch: c.state.Player().Pitch,
-			Velocity: pk.Velocity,
-		}
-		c.state.ReSimMovements(uint(pk.Tick), simMove)
+		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
+			a.Velocity = pk.Velocity
+			a.AddedSpeed = mgl32.Vec3{}
+		})
 	})
 }
 
@@ -165,16 +134,17 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 	}
 
 	c.state.Exec(func(q *game.Qx) {
-		simMove := &movements.AMovement{
-			Position: pk.Position,
-			OnGround: pk.OnGround,
-			Yaw: pk.HeadYaw,
-			Pitch: pk.Pitch,
-		}
-		c.state.ReSimMovements(uint(pk.Tick), simMove)
+		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
+			a.Position = pk.Position
+			a.OnGround = pk.OnGround
+			a.Yaw = pk.Yaw
+			a.Pitch = pk.Pitch
+		})
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
-		c.state.SetFlag(packet.InputFlagHandledTeleport)
+		if pk.Mode == packet.MoveModeTeleport{
+			c.state.SetFlag(packet.InputFlagHandledTeleport)
+		}
 	})
 }
 
@@ -184,16 +154,13 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 		return
 	}
 	if pk.PredictionType == packet.PredictionTypePlayer{
-		yaw, _ := utils.RotationToPitchAndYaw(mgl32.Vec3{pk.Rotation[0], 0 , pk.Rotation[1]})
 		c.state.Exec(func(q *game.Qx) {
-			simMove := &movements.AMovement{
-				Position: pk.Position,
-				Velocity: c.state.Player().Velocity,
-				Pitch: c.state.Player().Pitch,
-				OnGround: pk.OnGround,
-				Yaw: yaw,
-			}
-			c.state.ReSimMovements(uint(pk.Tick), simMove)
+			c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
+				a.Position = pk.Position
+				a.OnGround = pk.OnGround
+				a.Yaw = pk.Rotation[1]
+				a.Pitch = pk.Rotation[0]
+			})
 		})
 	}
 }

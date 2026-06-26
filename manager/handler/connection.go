@@ -65,8 +65,6 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 	switch pk := pk.(type) {
 	case *packet.NetworkStackLatency:
 		c.replyNetworkStackLatency(pk)
-	case *packet.MoveActorAbsolute:
-		c.replyMoveActorAbsolute(pk)
 	case *packet.LevelChunk:
 		c.replyLevelChunk(pk)
 	case *packet.NetworkChunkPublisherUpdate:

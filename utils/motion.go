@@ -31,22 +31,6 @@ func PlayerBBox(pos mgl64.Vec3) cube.BBox {
 	)
 }
 
-func RotationToPitchAndYaw(r mgl32.Vec3) (yaw, pitch float32) {
-	r64 := Mgl32Vec3Tomgl64Vec3(r)
-	xz := math.Sqrt(math.Pow(r64[0], 2) + math.Pow(r64[2], 2))
-	mag := math.Sqrt(math.Pow(xz, 2) + math.Pow(r64[1], 2))
-
-	pitch64, yaw64 := 180/math.Pi, 180/math.Pi
-	if xz > Negligible {
-		yaw64 = math.Acos(r64[2]/xz) * 180 / math.Pi
-	}
-	if mag > Negligible {
-		pitch64 = math.Acos(xz/mag) * 180 / math.Pi
-	}
-	pitch, yaw = float32(pitch64), float32(yaw64)
-	return
-}
-
 func Mgl32Vec3Tomgl64Vec3(v mgl32.Vec3) mgl64.Vec3 {
 	return mgl64.Vec3{float64(v[0]), float64(v[1]), float64(v[2])}
 }
@@ -74,4 +58,29 @@ func RemoveDeltaEpsilon(delta mgl64.Vec3) mgl64.Vec3{
 		}
 	}
 	return delta
+}
+
+func xzSpeed(v mgl32.Vec3) float32 {
+	return float32(math.Sqrt(math.Pow(float64(v[0]), 2) + math.Pow(float64(v[2]), 2)))
+}
+
+func sinNCosOfSpeed(velocity mgl32.Vec3) (sinD, cosD float32) {
+	speed := xzSpeed(velocity)
+	xVel := velocity[0]
+	zVel := velocity[2]
+
+	sinD = float32(0)
+	cosD = float32(1)
+	if speed > 0.003 {
+		sinD = xVel / speed
+		cosD = zVel / speed
+	}
+	return
+}
+
+func SpeedToVelocity(velocity mgl32.Vec3, speed float32) mgl32.Vec3{
+	sinD, cosD := sinNCosOfSpeed(velocity)
+	velocity[0] = speed*sinD
+	velocity[2] = speed*cosD
+	return velocity
 }

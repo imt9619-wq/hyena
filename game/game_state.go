@@ -88,6 +88,8 @@ func (gs *GameState) splitInMovement() *movements.InMovement{
 	in.Yaw = gs.player.Yaw
 	in.Isjumping = gs.player.isJumping
 	in.Isrunning = gs.player.isRunning
+	in.AddedSpeed = gs.player.addedSpeed
+	in.BaseSpeed = gs.player.baseSpeed 
 	return in
 }
 
@@ -97,8 +99,13 @@ func (gs *GameState) copyOutMovement(out *movements.OutMovement){
 	ps.Position = out.Position
 	ps.Velocity = out.Velocity
 	ps.OnGround = out.OnGround
+	ps.baseSpeed = out.BaseSpeed
 }
 
 func (gs *GameState) GStick() uint {
 	return gs.tick
+}
+
+func (gs *GameState) MoveAtTick(tick uint) (*movements.OutMovement, bool){
+	return gs.moveBuf.outMoveWithTick(tick)
 }

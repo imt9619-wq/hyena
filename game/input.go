@@ -22,15 +22,17 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk.ClientPredictedVehicle = 0
 	pk.AnalogueMoveVector = mgl32.Vec2{}
 	pk.CameraOrientation = mgl32.Vec3{}
+	pk.RawMoveVector, pk.MoveVector = gs.RawAndMoveVector()
 	gs.Player().setPlayerAuthInputWithPlayerState(pk)
 	return pk
 }
 
 // return a pointer to PlayerAuthInput packet where the fields are filled out based on the
 // current GameState
-func (gs *GameState) PlayerAuthInputWithStateNResetFlags() *packet.PlayerAuthInput {
+func (gs *GameState) PlayerAuthInputWithStateWithResetInputs() *packet.PlayerAuthInput {
 	pk := gs.PlayerAuthInputWithState()
 	gs.resetFlags()
+	gs.player.addedSpeed = mgl32.Vec3{}
 	return pk
 }
 
@@ -87,4 +89,15 @@ func (gs *GameState) StopJumping() {
 		gs.player.isJumping = false
 		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
 	})
+}
+
+func (gs *GameState) RawAndMoveVector() (raw mgl32.Vec2, move mgl32.Vec2){
+	if gs.tickInputDataFlags.Load(packet.InputFlagUp){
+		raw[1] = 1
+		move[1] = 1
+		if gs.tickInputDataFlags.Load(packet.InputFlagSneakCurrentRaw){
+			move[1] = 0.3
+		}
+	}
+	return 
 }

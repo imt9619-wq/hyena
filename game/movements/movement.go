@@ -2,6 +2,7 @@ package movements
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/movements/physics"
@@ -19,6 +20,7 @@ const(
 	MomentumThreshold      = float64(0.003)
 	MaxStepHeight          = float64(0.6)
 	ClimbSpeed             = float64(0.1176)
+	DefaultBaseSpeed       = float64(0.1)
 )
 
 type Movement struct {
@@ -31,15 +33,18 @@ type Movement struct {
     isjumping    bool
     onClimb      bool
     slipperiness float64
+	baseSpeed    float64
 
     flag         *protocol.Bitset
     stateInWorld *physics.StateInWorld
+	addedVelocity mgl32.Vec3
 }
 
 func NewMovement(world *blockmap.BlockMap) *Movement {
 	return &Movement{
 		world: world,
 		stateInWorld: physics.NewStateInWorld(world),
+		baseSpeed: DefaultBaseSpeed,
 	}
 }
 

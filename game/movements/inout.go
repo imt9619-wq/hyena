@@ -7,25 +7,31 @@ import (
 )
 
 type AMovement struct {
-	Position  mgl32.Vec3
-	Velocity  mgl32.Vec3
-	Yaw       float32
-	Pitch     float32
-	OnGround  bool
-	Isrunning bool
-	Isjumping bool
+	Position   mgl32.Vec3
+    Velocity   mgl32.Vec3
+	// AddedSpeed refer to the velocity value that is added by knockback, explorsion...(Basically 
+	// velocity that is not contributed by input)
+    AddedSpeed mgl32.Vec3
+    Yaw        float32
+    Pitch      float32
+	BaseSpeed  float32
+    OnGround   bool
+    Isrunning  bool
+    Isjumping  bool
 }
 
 type InMovement AMovement
 
 func (m *Movement) copyInMovement(in *InMovement) {
-	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(in.Velocity)
+	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(in.Velocity.Add(in.AddedSpeed))
 	m.position = utils.Mgl32Vec3Tomgl64Vec3(in.Position).Sub(mgl64.Vec3{0, utils.NetworkOffset, 0})
 	m.position = utils.RoundVecTo5Decimal(m.position)
 	m.yaw = float64(in.Yaw)
 	m.onGround = in.OnGround
 	m.isjumping = in.Isjumping
 	m.isrunning = in.Isrunning
+	m.addedVelocity = in.AddedSpeed
+	m.baseSpeed = float64(in.BaseSpeed)
 }
 
 type OutMovement AMovement
@@ -38,14 +44,23 @@ func (m *Movement) splitOutMovement() *OutMovement{
 	out.Yaw = float32(m.yaw)
 	out.Isjumping = m.isjumping
 	out.Isrunning = m.isrunning
+	out.BaseSpeed = float32(m.baseSpeed)
+	out.AddedSpeed = m.addedVelocity
 	return out
 }
 
-// doesnt copy input state
-func (out *OutMovement) CopyOutToIn(in *InMovement){
-	in.Position = out.Position
-	in.Velocity = out.Velocity
-	in.Yaw = out.Yaw
-	in.OnGround = out.OnGround
-	in.Pitch = out.Pitch
+// doesnt copy input state and addedSpeed
+func (out *AMovement) CopyOutToMove(move *AMovement){
+	move.Position = out.Position
+	move.Velocity = out.Velocity
+	move.Yaw = out.Yaw
+	move.OnGround = out.OnGround
+	move.Pitch = out.Pitch
+	move.BaseSpeed = out.BaseSpeed
+}
+
+func (provide *AMovement) CopyInputToMove(receiver *AMovement){
+	receiver.Isjumping = provide.Isjumping
+	receiver.Isrunning = provide.Isrunning
+	receiver.AddedSpeed = provide.AddedSpeed
 }

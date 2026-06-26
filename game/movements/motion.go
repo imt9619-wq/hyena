@@ -39,48 +39,6 @@ func (m *Movement) applyGravity() {
 	}
 }
 
-/*func (m *Movement) StartRunning() {
-	if m.isrunning {
-		return
-	}
-	m.state.Exec(func(q *game.Qx) {
-		m.isrunning = true
-		m.state.SetFlag(packet.InputFlagStartSprinting)
-	})
-}
-
-func (m *Movement) StopRunning() {
-	if !m.isrunning {
-		return
-	}
-	m.state.Exec(func(q *game.Qx) {
-		m.isrunning = false
-		m.state.SetFlag(packet.InputFlagStopSprinting)
-	})
-}
-
-func (m *Movement) StartJumping() {
-	if m.isjumping {
-		return
-	}
-	m.state.Exec(func(q *game.Qx) {
-		m.isjumping = true
-		m.state.SetFlag(packet.InputFlagJumpPressedRaw)
-		m.state.SetFlag(packet.InputFlagJumpCurrentRaw)
-		m.state.SetFlag(packet.InputFlagStartJumping)
-	})
-}
-
-func (m *Movement) StopJumping() {
-	if !m.isjumping {
-		return
-	}
-	m.state.Exec(func(q *game.Qx) {
-		m.isjumping = false
-		m.state.SetFlag(packet.InputFlagJumpReleasedRaw)
-	})
-}*/
-
 func (m *Movement) setSlipperiness() {
 	if !m.onGround {
 		m.slipperiness = AirborneSlipperiness
@@ -113,6 +71,7 @@ func (m *Movement) movementMultiplier() float64{
 func (m *Movement) jump() {
 	if m.onClimb{
 		m.velocity[1] = ClimbSpeed
+		m.setFlag(packet.InputFlagWantUp)
 		return
 	}
 	if m.onGround {
@@ -128,7 +87,7 @@ func (m *Movement) run() {
 	cosD := math.Cos(yawRad)
 
 	if m.onGround {
-		accel := 0.1 * SprintMovementMult * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
+		accel := m.baseSpeed * SprintMovementMult * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 	} else {
@@ -143,4 +102,5 @@ func (m *Movement) run() {
 	}
 
 	m.setFlag(packet.InputFlagSprinting)
+	m.setFlag(packet.InputFlagUp)
 }

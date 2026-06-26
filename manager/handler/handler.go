@@ -11,7 +11,6 @@ type Handler interface {
 	OnDisconnect(*Connection, string)
 	OnJoin(*Connection)
 	OnNetworkStackLatency(*Context, *packet.NetworkStackLatency)
-	OnMoveActorAbsolute(*Context, *packet.MoveActorAbsolute)
 	OnLevelChunk(*Context, *packet.LevelChunk)
 	OnSubChunk(*Context, *packet.SubChunk)
 	OnNetworkChunkPublisherUpdate(*Context, *packet.NetworkChunkPublisherUpdate)
@@ -39,7 +38,6 @@ func (h DefaultHandler) OnJoin(c *Connection) {
 
 func (h DefaultHandler) OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction){}
 func (h DefaultHandler) OnNetworkStackLatency(*Context, *packet.NetworkStackLatency){}
-func (h DefaultHandler) OnMoveActorAbsolute(*Context, *packet.MoveActorAbsolute){}
 func (h DefaultHandler) OnLevelChunk(*Context, *packet.LevelChunk){}
 func (h DefaultHandler) OnSubChunk(*Context, *packet.SubChunk){}
 func (h DefaultHandler) OnNetworkChunkPublisherUpdate(*Context, *packet.NetworkChunkPublisherUpdate){}

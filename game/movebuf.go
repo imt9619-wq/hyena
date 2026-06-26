@@ -47,27 +47,21 @@ func (mb *moveBuf) outMoveWithTick(tick uint) (*movements.OutMovement, bool){
 	return nil, false
 }
 
-func (gs *GameState) ReSimMovements(startTick uint, reSimMove *movements.AMovement){
+func (gs *GameState) ReSimMoveAtTick(startTick uint, modF func(*movements.AMovement)){
 	mb := gs.moveBuf
-	currInMove := &movements.InMovement{}
-	_, ok := mb.outMoveWithTick(startTick)
+	out, ok := mb.outMoveWithTick(startTick)
 	if !ok || gs.tick == startTick{
-		gs.player.Position = reSimMove.Position
-		gs.player.Velocity = reSimMove.Velocity
-		gs.player.OnGround = reSimMove.OnGround
-		gs.player.Yaw = reSimMove.Yaw
+		in := gs.splitInMovement()
+		modF((*movements.AMovement)(in))
+		gs.copyOutMovement((*movements.OutMovement)(in))
 		return
 	}
-	currOut := mb.buf[startTick-mb.firstTickInBuf]
-	currOut.Position = reSimMove.Position
-	currOut.Velocity = reSimMove.Velocity
-	currOut.OnGround = reSimMove.OnGround
-	currOut.Yaw = reSimMove.Yaw
+	modF((*movements.AMovement)(out))
 	for currTick := startTick; currTick < mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		currOut := mb.buf[ind]
-		currOut.CopyOutToIn(currInMove)
-		mb.buf[ind+1] = gs.movement.SimMovement(currInMove)
+		nextOutData := gs.movement.SimMovement((*movements.InMovement)(mb.buf[ind]))
+		(*movements.AMovement)(mb.buf[ind+1]).CopyInputToMove((*movements.AMovement)(nextOutData))
+		mb.buf[ind+1] = nextOutData
 	}
 	lastTickOut := mb.buf[mb.lastTickInBuf-mb.firstTickInBuf]
 	gs.copyOutMovement(lastTickOut)

@@ -13,7 +13,7 @@ func (c *Connection) tick() {
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
 	c.requestSubChunkInQuery()
-	c.WritePacket(c.state.PlayerAuthInputWithStateNResetFlags())
+	c.WritePacket(c.state.PlayerAuthInputWithStateWithResetInputs())
 }
 
 func (c *Connection) startTicking() {
