@@ -11,7 +11,6 @@ type StateInWorld struct{
     velocity mgl64.Vec3
     position mgl64.Vec3
     aaBB     cube.BBox
-	bboxFunc utils.BBoxFunc
 
     world      *blockmap.BlockMap
     scratch    *phyScratch

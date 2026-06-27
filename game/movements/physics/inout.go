@@ -18,7 +18,6 @@ func (s *StateInWorld) copyInPhyState(state InPhyState) {
 	s.position = utils.RoundVecTo5Decimal(state.Position)
 	s.aaBB = state.BBoxFunc(s.position)
 	s.velocity = utils.RemoveDeltaEpsilon(state.Velocity)
-	s.bboxFunc = state.BBoxFunc
 }
 
 type OutPhyState struct {
@@ -31,6 +30,6 @@ func (s *StateInWorld) outPhyState() OutPhyState {
 	return OutPhyState{
 		Velocity: s.velocity,
 		Position: s.position,
-		AABB:     s.bboxFunc(s.position),
+		AABB:     s.aaBB,
 	}
 }
