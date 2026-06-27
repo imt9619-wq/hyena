@@ -13,6 +13,7 @@ import (
 
 const(
 	AirborneSlipperiness   = float64(1)
+	AirborneAccelration    = float64(0.026)
 	SlipperinessToFriction = float64(0.91)
 	SprintMovementMult     = float64(1.3)
 	SprintJumpBoost        = float64(0.2)
@@ -24,13 +25,12 @@ const(
 )
 
 type Movement struct {
+	Inputs
 	world        *blockmap.BlockMap
     position     mgl64.Vec3
     velocity     mgl64.Vec3
     yaw          float64
     onGround     bool
-    isrunning    bool
-    isjumping    bool
     onClimb      bool
     slipperiness float64
 	baseSpeed    float64

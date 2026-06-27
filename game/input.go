@@ -51,42 +51,28 @@ func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
 
 func (gs *GameState) StartRunning() {
 	gs.Exec(func(q *Qx) {
-		if gs.player.isRunning {
-			return
-		}
-		gs.player.isRunning = true
-		gs.SetFlag(packet.InputFlagStartSprinting)
+		gs.Inputs().W.Pressed, gs.Inputs().Sprint.Pressed = true, true
 	})
 }
 
 func (gs *GameState) StopRunning() {
 	gs.Exec(func(q *Qx) {
-		if !gs.player.isRunning {
-			return
-		}
-		gs.player.isRunning = false
+		gs.Inputs().W.Pressed, gs.Inputs().Sprint.Pressed = false, false
 		gs.SetFlag(packet.InputFlagStopSprinting)
 	})
 }
 
 func (gs *GameState) StartJumping() {
 	gs.Exec(func(q *Qx) {
-		if gs.player.isJumping{
-			return
-		}
-		gs.player.isJumping = true
+		gs.Inputs().Space.Pressed = true
 		gs.SetFlag(packet.InputFlagJumpPressedRaw)
 		gs.SetFlag(packet.InputFlagJumpCurrentRaw)
-		gs.SetFlag(packet.InputFlagStartJumping)
 	})
 }
 
 func (gs *GameState) StopJumping() {
 	gs.Exec(func(q *Qx) {
-		if !gs.player.isJumping{
-			return
-		}
-		gs.player.isJumping = false
+		gs.Inputs().Space.Pressed = false
 		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
 	})
 }

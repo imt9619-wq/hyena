@@ -15,11 +15,10 @@ type playerState struct {
     OnGround bool
 	baseSpeed float32
 
-    isJumping bool
-	isRunning bool
-
     lastTickPos mgl32.Vec3
 	addedSpeed mgl32.Vec3
+
+	in movements.Inputs
 }
 
 func newPlayerState(conn *minecraft.Conn) *playerState {
@@ -28,7 +27,7 @@ func newPlayerState(conn *minecraft.Conn) *playerState {
 		Pitch: conn.GameData().Pitch,
 		Yaw: conn.GameData().Yaw,
 		Velocity: mgl32.Vec3{},
-		OnGround: true,
+		OnGround: false,
 		lastTickPos: conn.GameData().PlayerPosition,
 		baseSpeed: float32(movements.DefaultBaseSpeed),
 	}

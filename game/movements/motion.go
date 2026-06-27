@@ -9,13 +9,13 @@ import (
 )
 
 func (m *Movement) doMotions() {
-	m.setSlipperiness()
 	m.setOnClimb()
+	m.setSlipperiness()
 	m.applyHorizontalMovement()
-	if m.isjumping {
+	if m.Space.Pressed {
 		m.jump()
 	}
-	if m.isrunning {
+	if m.W.Pressed && m.Sprint.Pressed {
 		m.run()
 	}
 	m.applyGravity()
@@ -34,7 +34,7 @@ func (m *Movement) applyGravity() {
 		m.velocity[1] = (m.velocity[1] - 0.08) * 0.98
 		return
 	}
-	if m.onClimb && !m.isjumping{
+	if m.onClimb && !m.Space.Pressed{
 		m.velocity[1] = ClimbSpeed * -1
 	}
 }
@@ -76,6 +76,7 @@ func (m *Movement) jump() {
 	}
 	if m.onGround {
 		m.velocity[1] = JumpSpeed
+		m.setFlag(packet.InputFlagStartJumping)
 	}
 	m.setFlag(packet.InputFlagJumping)
 	m.setFlag(packet.InputFlagJumpCurrentRaw)
@@ -90,17 +91,17 @@ func (m *Movement) run() {
 		accel := m.baseSpeed * SprintMovementMult * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
-	} else {
-		airAccel := 0.02 * SprintMovementMult
-		m.velocity[0] += airAccel * sinD
-		m.velocity[2] += airAccel * cosD
-	}
 
-	if m.isjumping && m.onGround && !m.onClimb{
-		m.velocity[0] += SprintJumpBoost * sinD
-		m.velocity[2] += SprintJumpBoost * cosD
+		if m.Space.Pressed && !m.onClimb{
+			m.velocity[0] += SprintJumpBoost * sinD
+			m.velocity[2] += SprintJumpBoost * cosD
+		}
+	} else {
+		m.velocity[0] += AirborneAccelration * sinD
+		m.velocity[2] += AirborneAccelration * cosD
 	}
 
 	m.setFlag(packet.InputFlagSprinting)
 	m.setFlag(packet.InputFlagUp)
+	m.setFlag(packet.InputFlagStartSprinting)
 }

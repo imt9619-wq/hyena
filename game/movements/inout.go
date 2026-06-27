@@ -16,8 +16,8 @@ type AMovement struct {
     Pitch      float32
 	BaseSpeed  float32
     OnGround   bool
-    Isrunning  bool
-    Isjumping  bool
+    
+	Input Inputs
 }
 
 type InMovement AMovement
@@ -28,8 +28,7 @@ func (m *Movement) copyInMovement(in *InMovement) {
 	m.position = utils.RoundVecTo5Decimal(m.position)
 	m.yaw = float64(in.Yaw)
 	m.onGround = in.OnGround
-	m.isjumping = in.Isjumping
-	m.isrunning = in.Isrunning
+	m.Inputs = in.Input
 	m.addedVelocity = in.AddedSpeed
 	m.baseSpeed = float64(in.BaseSpeed)
 }
@@ -42,8 +41,7 @@ func (m *Movement) splitOutMovement() *OutMovement{
 	out.Position = utils.Mgl64Vec3Tomgl32Vec3(m.position.Add(mgl64.Vec3{0, utils.NetworkOffset, 0}))
 	out.OnGround = m.onGround 
 	out.Yaw = float32(m.yaw)
-	out.Isjumping = m.isjumping
-	out.Isrunning = m.isrunning
+	out.Input = m.Inputs
 	out.BaseSpeed = float32(m.baseSpeed)
 	out.AddedSpeed = m.addedVelocity
 	return out
@@ -60,7 +58,6 @@ func (out *AMovement) CopyOutToMove(move *AMovement){
 }
 
 func (provide *AMovement) CopyInputToMove(receiver *AMovement){
-	receiver.Isjumping = provide.Isjumping
-	receiver.Isrunning = provide.Isrunning
+	receiver.Input = provide.Input.NextTickInputs()
 	receiver.AddedSpeed = provide.AddedSpeed
 }

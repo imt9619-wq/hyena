@@ -51,7 +51,7 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 	}
 	// jump cancel
 	velocityAfterStair := m.velocity
-	if m.isjumping && m.velocity[1] == JumpSpeed && stepHeight >= JumpSpeed{
+	if m.Space.Pressed && m.velocity[1] == JumpSpeed && stepHeight >= JumpSpeed{
 		velocityAfterStair[1] = 0
 	}
 	

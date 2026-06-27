@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/imt9619-wq/hyena/utils"
@@ -75,7 +76,7 @@ func (gs *GameState) doMovement(){
 	out := gs.movement.SimMovementWithFlag(gs.splitInMovement(), &gs.tickInputDataFlags)
 	gs.copyOutMovement(out)
 	gs.moveBuf.addTick(out)
-	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position, gs.player.Velocity, gs.player.OnGround)
+	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
 	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
 	fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
 }
@@ -86,8 +87,7 @@ func (gs *GameState) splitInMovement() *movements.InMovement{
 	in.OnGround = gs.player.OnGround
 	in.Velocity = gs.player.Velocity
 	in.Yaw = gs.player.Yaw
-	in.Isjumping = gs.player.isJumping
-	in.Isrunning = gs.player.isRunning
+	in.Input = gs.player.in
 	in.AddedSpeed = gs.player.addedSpeed
 	in.BaseSpeed = gs.player.baseSpeed 
 	return in
@@ -100,6 +100,7 @@ func (gs *GameState) copyOutMovement(out *movements.OutMovement){
 	ps.Velocity = out.Velocity
 	ps.OnGround = out.OnGround
 	ps.baseSpeed = out.BaseSpeed
+	ps.in = out.Input.NextTickInputs()
 }
 
 func (gs *GameState) GStick() uint {
@@ -108,4 +109,8 @@ func (gs *GameState) GStick() uint {
 
 func (gs *GameState) MoveAtTick(tick uint) (*movements.OutMovement, bool){
 	return gs.moveBuf.outMoveWithTick(tick)
+}
+
+func (gs *GameState) Inputs() *movements.Inputs{
+	return &gs.player.in
 }
