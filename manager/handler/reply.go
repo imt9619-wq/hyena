@@ -109,7 +109,7 @@ func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
 	c.state.Exec(func(q *game.Qx) {
 		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
 			a.Velocity = pk.Velocity
-			a.AddedSpeed = mgl32.Vec3{}
+			a.Input.ServerSpeedAdd = mgl32.Vec3{}
 		})
 	})
 }
@@ -137,8 +137,8 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
 			a.Position = pk.Position
 			a.OnGround = pk.OnGround
-			a.Yaw = pk.Yaw
-			a.Pitch = pk.Pitch
+			a.Input.Yaw = pk.Yaw
+			a.Input.Pitch = pk.Pitch
 		})
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
@@ -158,8 +158,8 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 			c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
 				a.Position = pk.Position
 				a.OnGround = pk.OnGround
-				a.Yaw = pk.Rotation[1]
-				a.Pitch = pk.Rotation[0]
+				a.Input.Yaw = pk.Rotation[1]
+				a.Input.Pitch = pk.Rotation[0]
 			})
 		})
 	}

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -10,6 +8,8 @@ import (
 type Handler interface {
 	OnDisconnect(*Connection, string)
 	OnJoin(*Connection)
+	OnBeforeTick(*Connection)
+	OnAfterTick(*Connection)
 	OnNetworkStackLatency(*Context, *packet.NetworkStackLatency)
 	OnLevelChunk(*Context, *packet.LevelChunk)
 	OnSubChunk(*Context, *packet.SubChunk)
@@ -22,27 +22,21 @@ type Handler interface {
 	OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction)
 }
 
-type DefaultHandler struct{}
+type NopConnHandler struct{}
 
-var _ Handler = DefaultHandler{}
+var _ Handler = NopConnHandler{}
 
-func (h DefaultHandler) OnDisconnect(c *Connection, reason string) {
-	fmt.Printf("%s disconnected: %s\n", c.IdentityData().DisplayName, reason)
-}
-
-func (h DefaultHandler) OnJoin(c *Connection) {
-	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
-	c.StartRunning()
-	c.StartJumping()
-}
-
-func (h DefaultHandler) OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction){}
-func (h DefaultHandler) OnNetworkStackLatency(*Context, *packet.NetworkStackLatency){}
-func (h DefaultHandler) OnLevelChunk(*Context, *packet.LevelChunk){}
-func (h DefaultHandler) OnSubChunk(*Context, *packet.SubChunk){}
-func (h DefaultHandler) OnNetworkChunkPublisherUpdate(*Context, *packet.NetworkChunkPublisherUpdate){}
-func (h DefaultHandler) OnChunkRadiusUpdated(*Context, *packet.ChunkRadiusUpdated){}
-func (h DefaultHandler) OnUpdateAttributes(*Context, *packet.UpdateAttributes){}
-func (h DefaultHandler) OnSetActorMotion(*Context, *packet.SetActorMotion){}
-func (h DefaultHandler) OnUpdateBlock(*Context, *packet.UpdateBlock){}
-func (h DefaultHandler) OnMovePlayer(*Context, *packet.MovePlayer){}
+func (h NopConnHandler) OnDisconnect(*Connection, string){}
+func (h NopConnHandler) OnJoin(*Connection){}
+func (h NopConnHandler) OnBeforeTick(*Connection){}
+func (h NopConnHandler) OnAfterTick(*Connection){}
+func (h NopConnHandler) OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction){}
+func (h NopConnHandler) OnNetworkStackLatency(*Context, *packet.NetworkStackLatency){}
+func (h NopConnHandler) OnLevelChunk(*Context, *packet.LevelChunk){}
+func (h NopConnHandler) OnSubChunk(*Context, *packet.SubChunk){}
+func (h NopConnHandler) OnNetworkChunkPublisherUpdate(*Context, *packet.NetworkChunkPublisherUpdate){}
+func (h NopConnHandler) OnChunkRadiusUpdated(*Context, *packet.ChunkRadiusUpdated){}
+func (h NopConnHandler) OnUpdateAttributes(*Context, *packet.UpdateAttributes){}
+func (h NopConnHandler) OnSetActorMotion(*Context, *packet.SetActorMotion){}
+func (h NopConnHandler) OnUpdateBlock(*Context, *packet.UpdateBlock){}
+func (h NopConnHandler) OnMovePlayer(*Context, *packet.MovePlayer){}

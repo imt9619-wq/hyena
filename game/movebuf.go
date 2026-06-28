@@ -18,9 +18,10 @@ type moveBuf struct {
 func newMoveBuf(conn *minecraft.Conn) *moveBuf{
 	mb := &moveBuf{}
 	mb.bufSize = int(conn.GameData().PlayerMovementSettings.RewindHistorySize)
-	if mb.bufSize != 0{
-		mb.buf = make([]*movements.OutMovement, 0, mb.bufSize)
+	if mb.bufSize <= 0{
+		mb.bufSize = 1
 	}
+	mb.buf = make([]*movements.OutMovement, 0, mb.bufSize)
 	return mb
 }
 
@@ -41,9 +42,6 @@ func (mb *moveBuf) addTick(newOutMove *movements.OutMovement){
 }
 
 func (mb *moveBuf) outMoveWithTick(tick uint) (*movements.OutMovement, bool){
-	if mb.bufSize == 0{
-		return nil, false
-	}
 	if mb.firstTickInBuf <= tick && mb.lastTickInBuf >= tick && len(mb.buf) != 0{
 		return mb.buf[int(tick-mb.firstTickInBuf)], true
 	}
@@ -55,19 +53,19 @@ func (gs *GameState) ReSimMoveAtTick(startTick uint, modF func(*movements.AMovem
 	mb := gs.moveBuf
 	out, ok := mb.outMoveWithTick(startTick)
 	if !ok || gs.tick == startTick{
-		in := gs.splitInMovement()
+		in := gs.player.splitInMovement(&gs.tickInputDataFlags)
 		modF((*movements.AMovement)(in))
-		gs.copyOutMovement((*movements.OutMovement)(in))
+		gs.player.copyOutMovement((*movements.OutMovement)(in))
 		return
 	}
 	modF((*movements.AMovement)(out))
 	for currTick := startTick; currTick < mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		nextOutData := gs.movement.SimMovement((*movements.InMovement)(mb.buf[ind]))
+		nextOutData := gs.movement.SimMovements((*movements.InMovement)(mb.buf[ind]))
 		(*movements.AMovement)(mb.buf[ind+1]).CopyInputToMove((*movements.AMovement)(nextOutData))
 		mb.buf[ind+1] = nextOutData
 	}
 	lastTickOut := mb.buf[mb.lastTickInBuf-mb.firstTickInBuf]
 	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.Position, lastTickOut.Position, out.Position, startTick)
-	gs.copyOutMovement(lastTickOut)
+	gs.player.copyOutMovement(lastTickOut)
 }

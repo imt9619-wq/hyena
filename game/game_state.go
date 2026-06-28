@@ -12,6 +12,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 // GameState holds per-session Minecraft world data used by movement and packet output.
@@ -65,52 +66,63 @@ func (gs *GameState) EntityRunTimeId() uint64 {
 func (gs *GameState) Tick() {
 	gs.tick++
 	gs.setInputFlagBlockBreakingDelayEnabled()
-	gs.player.tick()
 	gs.blockMap.UpdateChunkCentre(gs.player.Position)
 	gs.blockMap.RefreshMapWithRenderDistance()
 	gs.doMovement()
+	gs.tickReset()
 }
 
 func (gs *GameState) doMovement(){
 	now := time.Now()
-	out := gs.movement.SimMovementWithFlag(gs.splitInMovement(), &gs.tickInputDataFlags)
-	gs.copyOutMovement(out)
+	out := gs.movement.SimMovementsWithFlags(gs.player.splitInMovement(&gs.tickInputDataFlags))
+	gs.setStateChangeFlags(out)	
+	gs.player.copyOutMovement(out)
 	gs.moveBuf.addTick(out)
+	gs.player.in = out.Input.NextTickPresses()
 	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
 	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
 	fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
-}
-
-func (gs *GameState) splitInMovement() *movements.InMovement{
-	in := &movements.InMovement{}
-	in.Position = gs.player.Position
-	in.OnGround = gs.player.OnGround
-	in.Velocity = gs.player.Velocity
-	in.Yaw = gs.player.Yaw
-	in.Input = gs.player.in
-	in.AddedSpeed = gs.player.addedSpeed
-	in.BaseSpeed = gs.player.baseSpeed 
-	return in
-}
-
-func (gs *GameState) copyOutMovement(out *movements.OutMovement){
-	ps := gs.player
-	ps.Yaw = out.Yaw
-	ps.Position = out.Position
-	ps.Velocity = out.Velocity
-	ps.OnGround = out.OnGround
-	ps.baseSpeed = out.BaseSpeed
-	ps.in = out.Input.NextTickInputs()
 }
 
 func (gs *GameState) GStick() uint {
 	return gs.tick
 }
 
-func (gs *GameState) MoveAtTick(tick uint) (*movements.OutMovement, bool){
-	return gs.moveBuf.outMoveWithTick(tick)
-}
-
 func (gs *GameState) Inputs() *movements.Inputs{
 	return &gs.player.in
+}
+
+func (gs *GameState) Player() *playerState {
+	return gs.player
+}
+
+func (gs *GameState) setStateChangeFlags(nowOut *movements.OutMovement){
+	out, ok := gs.moveBuf.outMoveWithTick(gs.tick-1)
+	nowIn := nowOut.Input
+	lastIn := movements.Inputs{}
+	if ok{
+		lastIn = out.Input
+	}
+	if !lastIn.Space.Pressed && nowIn.Space.Pressed{
+		gs.SetFlag(packet.InputFlagJumpPressedRaw)
+	}
+	if lastIn.Space.Pressed && !nowIn.Space.Pressed{
+		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
+	}
+	if lastIn.Sprint.Pressed && !nowIn.Sprint.Pressed{
+		gs.SetFlag(packet.InputFlagStopSprinting)
+	}
+}
+
+func flagLoad(flags *protocol.Bitset, flag int) bool{
+	if flags == nil{
+		return false
+	}
+	return (*flags).Load(flag)
+}
+
+func (gs *GameState) tickReset(){
+	gs.resetFlags()
+	gs.player.in.ServerSpeedAdd = mgl32.Vec3{}
+	gs.player.in.InputFlags = &gs.tickInputDataFlags
 }

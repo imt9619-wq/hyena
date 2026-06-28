@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/imt9619-wq/hyena/manager"
-	"github.com/imt9619-wq/hyena/manager/handler"
+	"github.com/imt9619-wq/hyena/pathfind"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 		// play.venitymc.com:19132
 		// 127.0.0.1:19134
 		// 127.0.0.1:19135
-		if err := acc.JoinServer("127.0.0.1:19134", handler.DefaultHandler{}); err != nil {
+		if err := acc.JoinServer("127.0.0.1:19135", pathfind.Handler{}); err != nil {
 			fmt.Println(err)
 		}
 	}()

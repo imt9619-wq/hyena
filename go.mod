@@ -3,10 +3,10 @@ module github.com/imt9619-wq/hyena
 go 1.26.1
 
 require (
-	github.com/df-mc/dragonfly v0.10.13
+	github.com/df-mc/dragonfly v0.10.14
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
-	github.com/sandertv/gophertunnel v1.56.2
+	github.com/sandertv/gophertunnel v1.57.0
 	golang.org/x/oauth2 v0.36.0
 )
 

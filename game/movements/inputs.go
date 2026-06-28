@@ -1,7 +1,24 @@
 package movements
 
+import (
+	"math"
+
+	"github.com/go-gl/mathgl/mgl32"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
+)
+
 // Represent the minic of keyBoard input
 type Inputs struct{
+	Keys
+    Yaw   float32
+    Pitch float32
+    // ServerSpeedAdd refer to the velocity value that is added by knockback, explorsion...(Basically
+    // velocity that is not contributed by client input)
+    ServerSpeedAdd mgl32.Vec3
+    InputFlags     *protocol.Bitset
+}
+
+type Keys struct{
 	W, A, S, D           KeyPress
     Space, Shift, Sprint KeyPress
 }
@@ -11,15 +28,92 @@ type KeyPress struct{
     PressOnce bool
 }
 
-func (in Inputs) NextTickInputs() Inputs{
+func (in Inputs) NextTickPresses() Inputs{
 	nextIn := Inputs{}
-	if in.W.Pressed && !in.W.PressOnce{nextIn.W = in.W}
-	if in.A.Pressed && !in.A.PressOnce{nextIn.A = in.A}
-	if in.S.Pressed && !in.S.PressOnce{nextIn.S = in.S}
-	if in.D.Pressed && !in.D.PressOnce{nextIn.D = in.D}
-
-	if in.Space.Pressed && !in.Space.PressOnce{nextIn.Space = in.Space}
-	if in.Shift.Pressed && !in.Shift.PressOnce{nextIn.Shift = in.Shift}
-	if in.Sprint.Pressed && !in.Sprint.PressOnce{nextIn.Sprint = in.Sprint}
+	nextIn.W = in.W.nextTickPress()
+	nextIn.A = in.A.nextTickPress()
+	nextIn.S = in.S.nextTickPress()
+	nextIn.D = in.D.nextTickPress()
+	nextIn.Sprint = in.Sprint.nextTickPress()
+	nextIn.Shift = in.Shift.nextTickPress()
+	nextIn.Space = in.Space.nextTickPress()
+	nextIn.Yaw, nextIn.Pitch = in.Yaw, in.Pitch
 	return nextIn
+}
+
+func (kp KeyPress) nextTickPress() KeyPress{
+	if kp.Pressed && !kp.PressOnce{
+		return kp
+	}
+	return KeyPress{}
+}
+
+var directionToOffsets = map[[2]int]float64{
+    {-1, -1}: -135.0,
+    {-1,  0}:  180.0,
+    {-1,  1}:  135.0,
+    { 0, -1}:  -90.0,
+    { 0,  0}:    0.0, 
+    { 0,  1}:   90.0,
+    { 1, -1}:  -45.0,
+    { 1,  0}:    0.0,
+    { 1,  1}:   45.0,
+}
+
+func (k Keys) keyOffsets() float64{
+	var frontBack, rightLeft int
+	if !(k.W.Pressed == k.S.Pressed){
+		if k.W.Pressed{
+			frontBack = 1
+		}else{
+			frontBack = -1
+		}
+	}
+	if !(k.A.Pressed == k.D.Pressed){
+		if k.D.Pressed{
+			rightLeft = 1
+		}else{
+			rightLeft = -1
+		}
+	}	
+	return directionToOffsets[[2]int{frontBack, rightLeft}]
+}
+
+func (k Keys) movementMultiplier() float64{
+	dirMul := func() float64{
+		if k.keyOffsets() == 45 || k.keyOffsets() == -45{
+			if k.Shift.Pressed{
+				return math.Sqrt(2) * 0.98
+			}
+			return 1
+		}
+		if k.isStop(){
+			return 0
+		}
+		return 0.98
+	}()
+	moveMul := func() float64{
+		if k.isStop(){
+			return 0
+		}
+		if k.Shift.Pressed{
+			return 0.3
+		}
+		if k.isSprinting(){
+			return 1.3
+		}
+		return 1
+	}()
+	return moveMul * dirMul
+}
+
+func (k Keys) isStop() bool{
+	if k.A.Pressed == k.D.Pressed && k.W.Pressed == k.S.Pressed{
+		return true
+	}
+	return false
+}
+
+func (k Keys) isSprinting() bool{
+	return k.W.Pressed && k.Sprint.Pressed && k.W.Pressed != k.S.Pressed
 }

@@ -21,7 +21,7 @@ func defaultClientData() login.ClientData{
 
 func (a *Account) JoinServer(serverAddress string, h handler.Handler) error {
 	if h == nil{
-		h = handler.DefaultHandler{}
+		h = handler.NopConnHandler{}
 	}
 	src := auth.RefreshTokenSource(a.config.Token)
 	serverConn, err := minecraft.Dialer{

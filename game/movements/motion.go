@@ -15,7 +15,7 @@ func (m *Movement) doMotions() {
 	if m.Space.Pressed {
 		m.jump()
 	}
-	if m.W.Pressed && m.Sprint.Pressed {
+	if !m.isStop() {
 		m.run()
 	}
 	m.applyGravity()
@@ -36,6 +36,7 @@ func (m *Movement) applyGravity() {
 	}
 	if m.onClimb && !m.Space.Pressed{
 		m.velocity[1] = ClimbSpeed * -1
+		m.setFlag(packet.InputFlagWantDown)
 	}
 }
 
@@ -64,10 +65,6 @@ func (m *Movement) applyHorizontalMovement() {
 	m.velocity[2] = mz
 }
 
-func (m *Movement) movementMultiplier() float64{
-	return 0.98
-}
-
 func (m *Movement) jump() {
 	if m.onClimb{
 		m.velocity[1] = ClimbSpeed
@@ -84,24 +81,56 @@ func (m *Movement) jump() {
 
 func (m *Movement) run() {
 	yawRad := m.yaw * (math.Pi / 180)
-	sinD := math.Sin(yawRad)
-	cosD := math.Cos(yawRad)
+	// sin is reverse for minecraft yaw
+	sinF := -math.Sin(yawRad)
+	cosF := math.Cos(yawRad)
+	dirRad := (m.keyOffsets() + m.yaw) * (math.Pi / 180)
+	sinD := -math.Sin(dirRad)
+	cosD := math.Cos(dirRad)
 
 	if m.onGround {
-		accel := m.baseSpeed * SprintMovementMult * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
+		accel := m.baseSpeed * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 
-		if m.Space.Pressed && !m.onClimb{
-			m.velocity[0] += SprintJumpBoost * sinD
-			m.velocity[2] += SprintJumpBoost * cosD
+		if m.Space.Pressed && !m.onClimb && m.isSprinting(){
+			m.velocity[0] += SprintJumpBoost * sinF
+			m.velocity[2] += SprintJumpBoost * cosF
 		}
 	} else {
 		m.velocity[0] += AirborneAccelration * sinD
 		m.velocity[2] += AirborneAccelration * cosD
 	}
+	m.setHorizontalFlags()
+}
 
-	m.setFlag(packet.InputFlagSprinting)
-	m.setFlag(packet.InputFlagUp)
-	m.setFlag(packet.InputFlagStartSprinting)
+func (m *Movement) setHorizontalFlags(){
+	if m.isSprinting(){
+		m.setFlag(packet.InputFlagSprintDown)
+		m.setFlag(packet.InputFlagSprinting)
+		m.setFlag(packet.InputFlagStartSprinting)
+	}
+	if m.W.Pressed && !m.S.Pressed{
+		m.setFlag(packet.InputFlagUp)
+	}
+	if m.S.Pressed && !m.W.Pressed{
+		m.setFlag(packet.InputFlagDown)
+	}
+	if m.A.Pressed && !m.D.Pressed{
+		m.setFlag(packet.InputFlagRight)
+	}
+	if m.D.Pressed && !m.A.Pressed{
+		m.setFlag(packet.InputFlagLeft)
+	}
+	switch m.keyOffsets(){
+	case 45:
+		m.setFlag(packet.InputFlagUpRight)
+	case 135:
+		m.setFlag(packet.InputFlagDownRight)
+	case -135:
+		m.setFlag(packet.InputFlagDownLeft)
+	case -45:
+		m.setFlag(packet.InputFlagUpLeft)
+	default:
+	} 
 }

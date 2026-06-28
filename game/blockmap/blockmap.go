@@ -15,11 +15,11 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
-var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
-//var airRID uint32
+//var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
+var airRID uint32
 func init() {
-	//world.DefaultBlockRegistry.Finalize()
-	//airRID = world.BlockRuntimeID(block.Air{})
+	world.DefaultBlockRegistry.Finalize()
+	airRID = world.BlockRuntimeID(block.Air{})
 }
 
 // BlockMap holds *chunk.Chunk values for chunks within render distance.

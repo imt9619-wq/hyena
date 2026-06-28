@@ -7,13 +7,15 @@ import (
 )
 
 func (c *Connection) tick() {
+	defer c.handler.OnAfterTick(c)
+	c.handler.OnBeforeTick(c)
 	<-c.state.Exec(c.gameStateTick)
 }
 
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
 	c.requestSubChunkInQuery()
-	c.WritePacket(c.state.PlayerAuthInputWithStateWithResetInputs())
+	c.WritePacket(c.state.PlayerAuthInputWithState())
 }
 
 func (c *Connection) startTicking() {

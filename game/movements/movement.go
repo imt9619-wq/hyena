@@ -2,7 +2,6 @@ package movements
 
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/movements/physics"
@@ -37,7 +36,6 @@ type Movement struct {
 
     flag         *protocol.Bitset
     stateInWorld *physics.StateInWorld
-	addedVelocity mgl32.Vec3
 }
 
 func NewMovement(world *blockmap.BlockMap) *Movement {
@@ -48,8 +46,7 @@ func NewMovement(world *blockmap.BlockMap) *Movement {
 	}
 }
 
-func (m *Movement) SimMovementWithFlag(in *InMovement, flag *protocol.Bitset) *OutMovement{
-	m.flag = flag
+func (m *Movement) SimMovements(in *InMovement) *OutMovement{
 	m.copyInMovement(in)
 	m.doMotions()
 	m.simCollision()
@@ -57,8 +54,9 @@ func (m *Movement) SimMovementWithFlag(in *InMovement, flag *protocol.Bitset) *O
 	return m.splitOutMovement()
 }
 
-func (m *Movement) SimMovement(in *InMovement) *OutMovement{
-	return m.SimMovementWithFlag(in, nil)
+func (m *Movement) SimMovementsWithFlags(in *InMovement) *OutMovement{
+	m.flag = in.Input.InputFlags
+	return m.SimMovements(in)
 }
 
 func (m *Movement) setOnGround() {

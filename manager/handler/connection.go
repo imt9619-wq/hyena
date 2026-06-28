@@ -29,22 +29,6 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 	return c
 }
 
-func (c *Connection) StartRunning() {
-	c.state.StartRunning()
-}
-
-func (c *Connection) StopRunning() {
-	c.state.StopRunning()
-}
-
-func (c *Connection) StartJumping() {
-	c.state.StartJumping()
-}
-
-func (c *Connection) StopJumping() {
-	c.state.StopJumping()
-}
-
 func (c *Connection) SetHandler(h Handler) {
 	c.handler = h
 }
@@ -59,6 +43,10 @@ func (c *Connection) Close() {
 		c.state.Close()
 		c.Conn.Close()
 	})
+}
+
+func (c *Connection) Closed() chan struct{}{
+	return c.closed
 }
 
 func (c *Connection) HandlePacket(pk packet.Packet){

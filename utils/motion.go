@@ -84,3 +84,11 @@ func SpeedToVelocity(velocity mgl32.Vec3, speed float32) mgl32.Vec3{
 	velocity[2] = speed*cosD
 	return velocity
 }
+
+func DeltaToRotation(deltas mgl64.Vec3) (pitch, yaw float64){
+	xzLen := mgl64.Vec2{deltas[0], deltas[2]}.Len()
+	if xzLen == 0{
+		return 0, 0
+	}
+	return math.Acos(xzLen/deltas.Len()), math.Acos(deltas[2]/xzLen)
+}

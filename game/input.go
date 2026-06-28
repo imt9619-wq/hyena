@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -9,30 +10,28 @@ import (
 // return a pointer to PlayerAuthInput packet where the fields are filled out based on the
 // current GameState
 func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
+	nowOut, ok := gs.moveBuf.outMoveWithTick(gs.tick)
 	pk := &packet.PlayerAuthInput{}
+	if ok{
+		pk.InputData = *nowOut.Input.InputFlags
+		pk.RawMoveVector, pk.MoveVector = gs.RawAndMoveVector(nowOut)
+	}
 	pk.Tick = uint64(gs.tick)
 	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
 	pk.PlayMode = packet.PlayModeNormal
 	pk.InteractionModel = packet.InteractionModelClassic
 	pk.BlockActions = nil
-	pk.InputData = gs.tickInputDataFlags
 	pk.ItemInteractionData = protocol.UseItemTransactionData{}
 	pk.ItemStackRequest = protocol.ItemStackRequest{}
 	pk.VehicleRotation = mgl32.Vec2{}
 	pk.ClientPredictedVehicle = 0
 	pk.AnalogueMoveVector = mgl32.Vec2{}
 	pk.CameraOrientation = mgl32.Vec3{}
-	pk.RawMoveVector, pk.MoveVector = gs.RawAndMoveVector()
 	gs.Player().setPlayerAuthInputWithPlayerState(pk)
-	return pk
-}
-
-// return a pointer to PlayerAuthInput packet where the fields are filled out based on the
-// current GameState
-func (gs *GameState) PlayerAuthInputWithStateWithResetInputs() *packet.PlayerAuthInput {
-	pk := gs.PlayerAuthInputWithState()
-	gs.resetFlags()
-	gs.player.addedSpeed = mgl32.Vec3{}
+	out, ok := gs.moveBuf.outMoveWithTick(gs.tick-1)
+	if ok{
+		pk.Delta = nowOut.Position.Sub(out.Position)
+	}
 	return pk
 }
 
@@ -49,39 +48,11 @@ func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
 	gs.SetFlag(packet.InputFlagBlockBreakingDelayEnabled)
 }
 
-func (gs *GameState) StartRunning() {
-	gs.Exec(func(q *Qx) {
-		gs.Inputs().W.Pressed, gs.Inputs().Sprint.Pressed = true, true
-	})
-}
-
-func (gs *GameState) StopRunning() {
-	gs.Exec(func(q *Qx) {
-		gs.Inputs().W.Pressed, gs.Inputs().Sprint.Pressed = false, false
-		gs.SetFlag(packet.InputFlagStopSprinting)
-	})
-}
-
-func (gs *GameState) StartJumping() {
-	gs.Exec(func(q *Qx) {
-		gs.Inputs().Space.Pressed = true
-		gs.SetFlag(packet.InputFlagJumpPressedRaw)
-		gs.SetFlag(packet.InputFlagJumpCurrentRaw)
-	})
-}
-
-func (gs *GameState) StopJumping() {
-	gs.Exec(func(q *Qx) {
-		gs.Inputs().Space.Pressed = false
-		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
-	})
-}
-
-func (gs *GameState) RawAndMoveVector() (raw mgl32.Vec2, move mgl32.Vec2){
-	if gs.tickInputDataFlags.Load(packet.InputFlagUp){
+func (gs *GameState) RawAndMoveVector(nowOut *movements.OutMovement) (raw mgl32.Vec2, move mgl32.Vec2){
+	if (*nowOut.Input.InputFlags).Load(packet.InputFlagUp){
 		raw[1] = 1
 		move[1] = 1
-		if gs.tickInputDataFlags.Load(packet.InputFlagSneakCurrentRaw){
+		if (*nowOut.Input.InputFlags).Load(packet.InputFlagSneakCurrentRaw){
 			move[1] = 0.3
 		}
 	}
