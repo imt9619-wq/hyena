@@ -33,7 +33,9 @@ type Movement struct {
     onClimb      bool
     slipperiness float64
 	baseSpeed    float64
+	bboxFunc   utils.BBoxFunc
 
+	blockSource  utils.BlockSourse
     flag         *protocol.Bitset
     stateInWorld *physics.StateInWorld
 }
@@ -41,7 +43,7 @@ type Movement struct {
 func NewMovement(world *blockmap.BlockMap) *Movement {
 	return &Movement{
 		world: world,
-		stateInWorld: physics.NewStateInWorld(world),
+		stateInWorld: physics.NewStateInWorld(),
 		baseSpeed: DefaultBaseSpeed,
 	}
 }
@@ -60,7 +62,7 @@ func (m *Movement) SimMovementsWithFlags(in *InMovement) *OutMovement{
 }
 
 func (m *Movement) setOnGround() {
-	m.onGround= false
+	m.onGround = false
 	tinyBBox := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(m.position), cube.FaceDown)
 	if m.velocity[1] == 0 && utils.BBoxIntersectsSolid(m.world, tinyBBox) {
 		m.onGround = true

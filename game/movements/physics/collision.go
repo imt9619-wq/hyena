@@ -3,7 +3,6 @@ package physics
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/utils"
 )
 
@@ -12,13 +11,12 @@ type StateInWorld struct{
     position mgl64.Vec3
     aaBB     cube.BBox
 
-    world      *blockmap.BlockMap
+    world      utils.BlockSourse
     scratch    *phyScratch
 }
 
-func NewStateInWorld(world *blockmap.BlockMap) *StateInWorld{
+func NewStateInWorld() *StateInWorld{
 	s := &StateInWorld{}
-	s.world = world
 	s.scratch = newScratch()
 	return s
 }

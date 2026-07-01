@@ -87,19 +87,19 @@ func (k Keys) movementMultiplier() float64{
 			}
 			return 1
 		}
-		if k.isStop(){
+		if k.IsStop(){
 			return 0
 		}
 		return 0.98
 	}()
 	moveMul := func() float64{
-		if k.isStop(){
+		if k.IsStop(){
 			return 0
 		}
 		if k.Shift.Pressed{
 			return 0.3
 		}
-		if k.isSprinting(){
+		if k.IsSprinting(){
 			return 1.3
 		}
 		return 1
@@ -107,13 +107,45 @@ func (k Keys) movementMultiplier() float64{
 	return moveMul * dirMul
 }
 
-func (k Keys) isStop() bool{
+func (k Keys) IsStop() bool{
 	if k.A.Pressed == k.D.Pressed && k.W.Pressed == k.S.Pressed{
 		return true
 	}
 	return false
 }
 
-func (k Keys) isSprinting() bool{
-	return k.W.Pressed && k.Sprint.Pressed && k.W.Pressed != k.S.Pressed
+func (k Keys) IsWalk() bool{
+	return !(k.IsStop() || k.Sprint.Pressed)
+}
+
+func (k Keys) IsUpWalk() bool{
+	return k.W.Pressed && !k.S.Pressed
+}
+
+func (k Keys) IsRightWalk() bool{
+	return k.D.Pressed && !k.A.Pressed
+}
+
+func (k Keys) IsStrafe() bool{
+	return k.keyOffsets() == 45 || k.keyOffsets() == -45
+}
+
+func (k Keys) IsLeftWalk() bool{
+	return k.A.Pressed && !k.D.Pressed
+}
+
+func (k Keys) IsSneak() bool{
+	return k.Shift.Pressed
+}
+
+func (k Keys) IsJump() bool{
+	return k.Space.Pressed
+}
+
+func (k Keys) IsDownWalk() bool{
+	return k.S.Pressed && !k.W.Pressed
+}
+
+func (k Keys) IsSprinting() bool{
+	return k.W.Pressed && k.Sprint.Pressed && !k.S.Pressed
 }

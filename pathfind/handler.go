@@ -13,7 +13,7 @@ type Handler struct {
 func (h Handler) OnJoin(c *handler.Connection) {
 	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 	c.StartRunning(false)
-	//c.StartJumping()
+	c.StartSneaking(false)
 	c.SetYaw(-30)
 }
 

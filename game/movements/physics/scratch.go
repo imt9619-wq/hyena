@@ -8,7 +8,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/utils"
 )
 
@@ -90,10 +89,10 @@ func (p *phyScratch) sweptBlockPositions(aabb cube.BBox, deltas mgl64.Vec3) map[
 	return p.blockInPath
 }
 
-func (p *phyScratch) SweptBlockModels(aabb cube.BBox, deltas mgl64.Vec3, bm *blockmap.BlockMap) iter.Seq2[cube.Pos, world.BlockModel]{
+func (p *phyScratch) SweptBlockModels(aabb cube.BBox, deltas mgl64.Vec3, bs utils.BlockSourse) iter.Seq2[cube.Pos, world.BlockModel]{
 	return func(yield func(cube.Pos, world.BlockModel) bool) {
 		for blockPos := range p.sweptBlockPositions(aabb, deltas){
-			model, ok := bm.BlockModel(blockPos, 0)
+			model, ok := bs.BlockModel(blockPos, 0)
 			if !ok {
 				continue
 			}

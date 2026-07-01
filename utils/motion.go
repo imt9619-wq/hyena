@@ -31,6 +31,18 @@ func PlayerBBox(pos mgl64.Vec3) cube.BBox {
 	)
 }
 
+func PlayerSneakBBox(pos mgl64.Vec3) cube.BBox{
+	halfW := PlayerWidth / 2
+	return cube.Box(
+		pos[0]-halfW,
+		pos[1],
+		pos[2]-halfW,
+		pos[0]+halfW,
+		pos[1]+PlayerSneakHeight,
+		pos[2]+halfW,
+	)
+}
+
 func Mgl32Vec3Tomgl64Vec3(v mgl32.Vec3) mgl64.Vec3 {
 	return mgl64.Vec3{float64(v[0]), float64(v[1]), float64(v[2])}
 }

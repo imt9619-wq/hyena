@@ -7,9 +7,10 @@ import (
 )
 
 type InPhyState struct {
-	Velocity mgl64.Vec3
-	Position mgl64.Vec3
-	BBoxFunc utils.BBoxFunc
+	Velocity    mgl64.Vec3
+    Position    mgl64.Vec3
+    BBoxFunc    utils.BBoxFunc
+    BlockSource utils.BlockSourse
 }
 
 // we are going to round off player position to the last five digit as the player might be stuck(rare but possible)
@@ -18,6 +19,7 @@ func (s *StateInWorld) copyInPhyState(state InPhyState) {
 	s.position = utils.RoundVecTo5Decimal(state.Position)
 	s.aaBB = state.BBoxFunc(s.position)
 	s.velocity = utils.RemoveDeltaEpsilon(state.Velocity)
+	s.world = state.BlockSource
 }
 
 type OutPhyState struct {

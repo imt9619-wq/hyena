@@ -5,20 +5,42 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (m *Movement) doMotions() {
+	m.setBBoxFunc()
 	m.setOnClimb()
 	m.setSlipperiness()
 	m.applyHorizontalMovement()
 	if m.Space.Pressed {
 		m.jump()
 	}
-	if !m.isStop() {
+	if !m.IsStop() {
 		m.run()
 	}
 	m.applyGravity()
+	if m.Shift.Pressed{
+		m.sneak()
+	}
+}
+
+func (m *Movement) sneak(){
+	m.setFlag(packet.InputFlagSneaking)
+	m.setFlag(packet.InputFlagStartSneaking)
+	m.setFlag(packet.InputFlagSneakDown)
+	m.setFlag(packet.InputFlagPersistSneak)
+	m.setFlag(packet.InputFlagSneakCurrentRaw)
+	m.setFlag(packet.InputFlagSneakToggleDown)
+}
+
+func (m *Movement) setBBoxFunc(){
+	if m.Shift.Pressed{
+		m.bboxFunc = utils.PlayerSneakBBox
+	}else{
+		m.bboxFunc = utils.PlayerBBox
+	}
 }
 
 func (m *Movement) setOnClimb(){
@@ -34,7 +56,7 @@ func (m *Movement) applyGravity() {
 		m.velocity[1] = (m.velocity[1] - 0.08) * 0.98
 		return
 	}
-	if m.onClimb && !m.Space.Pressed{
+	if m.onClimb && !m.Space.Pressed && !m.Shift.Pressed{
 		m.velocity[1] = ClimbSpeed * -1
 		m.setFlag(packet.InputFlagWantDown)
 	}
@@ -93,7 +115,7 @@ func (m *Movement) run() {
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 
-		if m.Space.Pressed && !m.onClimb && m.isSprinting(){
+		if m.Space.Pressed && !m.onClimb && m.IsSprinting(){
 			m.velocity[0] += SprintJumpBoost * sinF
 			m.velocity[2] += SprintJumpBoost * cosF
 		}
@@ -105,23 +127,24 @@ func (m *Movement) run() {
 }
 
 func (m *Movement) setHorizontalFlags(){
-	if m.isSprinting(){
+	if m.IsSprinting(){
 		m.setFlag(packet.InputFlagSprintDown)
 		m.setFlag(packet.InputFlagSprinting)
 		m.setFlag(packet.InputFlagStartSprinting)
 	}
-	if m.W.Pressed && !m.S.Pressed{
+	if m.IsUpWalk(){
 		m.setFlag(packet.InputFlagUp)
 	}
-	if m.S.Pressed && !m.W.Pressed{
+	if m.IsDownWalk(){
 		m.setFlag(packet.InputFlagDown)
 	}
-	if m.A.Pressed && !m.D.Pressed{
+	if m.IsRightWalk(){
 		m.setFlag(packet.InputFlagRight)
 	}
-	if m.D.Pressed && !m.A.Pressed{
+	if m.IsLeftWalk(){
 		m.setFlag(packet.InputFlagLeft)
 	}
+	
 	switch m.keyOffsets(){
 	case 45:
 		m.setFlag(packet.InputFlagUpRight)

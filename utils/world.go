@@ -14,6 +14,7 @@ import (
 // networkOffset can be found at github.com\df-mc\dragonfly\server\player.(ptype).NetworkOffset()
 const (
 	PlayerHeight           = float64(1.8)
+	PlayerSneakHeight      = float64(1.5)
 	PlayerWidth            = float64(0.6)
 	NetworkOffset          = float64(1.62)
 	ProbeOffset            = float64(0.003)
@@ -87,8 +88,8 @@ func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
 func SweptBBoxInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, cube.BBox]{
 	return func(yield func(cube.Pos, cube.BBox) bool) {
 		for pos := range blockPositionsInBBox(bbox) {
-			model, ok := bs.BlockModel(pos, 0)
-			if !ok {
+			model, _ := bs.BlockModel(pos, 0)
+			if model.BBox(pos, bs) == nil {
 				continue
 			}
 			for _, bbox := range BBoxes(model, pos, bs){
@@ -197,4 +198,14 @@ func FaceOnDeltaAxis(delta mgl64.Vec3, axis int) cube.Face{
 			return cube.FaceNorth
 		}
 	}
+}
+
+func Box(vec1, vec2 mgl64.Vec3) cube.BBox{
+	return cube.Box(vec1[0],
+					vec1[1],
+					vec1[2],
+					vec2[0],
+					vec2[1],
+					vec2[2],
+					)
 }
