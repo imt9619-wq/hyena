@@ -145,12 +145,10 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool)
 	return
 }
 
-func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel, exist bool) {
-	model = nil
-	exist = false
+func (b *BlockMap) BlockModel(pos cube.Pos, layer uint8) (world.BlockModel, bool) {
 	block, exist := b.block(pos, layer)
-	if !exist {
-		return
+	if block == nil {
+		return nil, exist
 	}
 	return block.Model(), exist
 }

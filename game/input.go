@@ -49,12 +49,24 @@ func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
 }
 
 func (gs *GameState) RawAndMoveVector(nowOut *movements.OutMovement) (raw mgl32.Vec2, move mgl32.Vec2){
-	if (*nowOut.Input.InputFlags).Load(packet.InputFlagUp){
+	if nowOut.Input.IsLeftWalk(){
+		raw[0] = 1
+	}
+	if nowOut.Input.IsRightWalk(){
+		raw[0] = -1
+	}
+	if nowOut.Input.IsUpWalk(){
 		raw[1] = 1
-		move[1] = 1
-		if (*nowOut.Input.InputFlags).Load(packet.InputFlagSneakCurrentRaw){
-			move[1] = 0.3
-		}
+	}
+	if nowOut.Input.IsDownWalk(){
+		raw[1] = -1
+	}
+	move = raw
+	if nowOut.Input.IsSneak(){
+		move = move.Mul(0.3)
+	}
+	if nowOut.Input.IsStrafe() && !nowOut.Input.IsSneak(){
+		move = move.Mul(0.98)
 	}
 	return 
 }

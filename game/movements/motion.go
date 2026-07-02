@@ -28,11 +28,8 @@ func (m *Movement) doMotions() {
 
 func (m *Movement) sneak(){
 	m.setFlag(packet.InputFlagSneaking)
-	m.setFlag(packet.InputFlagStartSneaking)
 	m.setFlag(packet.InputFlagSneakDown)
-	m.setFlag(packet.InputFlagPersistSneak)
 	m.setFlag(packet.InputFlagSneakCurrentRaw)
-	m.setFlag(packet.InputFlagSneakToggleDown)
 }
 
 func (m *Movement) setBBoxFunc(){
@@ -99,6 +96,7 @@ func (m *Movement) jump() {
 	}
 	m.setFlag(packet.InputFlagJumping)
 	m.setFlag(packet.InputFlagJumpCurrentRaw)
+	m.setFlag(packet.InputFlagJumpDown)
 }
 
 func (m *Movement) run() {
@@ -144,7 +142,7 @@ func (m *Movement) setHorizontalFlags(){
 	if m.IsLeftWalk(){
 		m.setFlag(packet.InputFlagLeft)
 	}
-	
+
 	switch m.keyOffsets(){
 	case 45:
 		m.setFlag(packet.InputFlagUpRight)

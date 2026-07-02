@@ -147,5 +147,5 @@ func (k Keys) IsDownWalk() bool{
 }
 
 func (k Keys) IsSprinting() bool{
-	return k.W.Pressed && k.Sprint.Pressed && !k.S.Pressed
+	return k.Sprint.Pressed && k.IsUpWalk() && !k.IsSneak() 
 }

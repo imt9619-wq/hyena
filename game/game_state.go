@@ -109,7 +109,18 @@ func (gs *GameState) setStateChangeFlags(nowOut *movements.OutMovement){
 	if lastIn.Space.Pressed && !nowIn.Space.Pressed{
 		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
 	}
-	if lastIn.Sprint.Pressed && !nowIn.Sprint.Pressed{
+	if !lastIn.Shift.Pressed && nowIn.Shift.Pressed{
+		gs.SetFlag(packet.InputFlagSneakPressedRaw)
+		gs.SetFlag(packet.InputFlagStartSneaking)
+	}
+	if lastIn.Shift.Pressed && !nowIn.Shift.Pressed{
+		gs.SetFlag(packet.InputFlagStopSneaking)
+		gs.SetFlag(packet.InputFlagSneakReleasedRaw)
+	}
+	if !ok{
+		return
+	}
+	if lastIn.InputFlags.Load(packet.InputFlagSprinting) && !nowIn.InputFlags.Load(packet.InputFlagSprinting){
 		gs.SetFlag(packet.InputFlagStopSprinting)
 	}
 }

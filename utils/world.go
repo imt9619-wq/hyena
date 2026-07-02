@@ -89,7 +89,7 @@ func SweptBBoxInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, cube.BB
 	return func(yield func(cube.Pos, cube.BBox) bool) {
 		for pos := range blockPositionsInBBox(bbox) {
 			model, _ := bs.BlockModel(pos, 0)
-			if model.BBox(pos, bs) == nil {
+			if model == nil {
 				continue
 			}
 			for _, bbox := range BBoxes(model, pos, bs){

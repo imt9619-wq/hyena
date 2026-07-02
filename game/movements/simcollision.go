@@ -9,18 +9,25 @@ import (
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/movements/physics"
 	"github.com/imt9619-wq/hyena/utils"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (m *Movement) simCollision(){
 	m.setBlockSource()
 	pos, velocity := m.doNormalCollisionThenStepAssist()
+	for axis, plane := range velocity{
+		if axis != 1 && plane == 0 && m.velocity[axis] != 0{
+			m.setFlag(packet.InputFlagHorizontalCollision)
+			break
+		}
+	}
 	m.pasteStateToMovements(pos, velocity)
 }
 
 func (m *Movement) setBlockSource(){
 	if m.IsSneak(){
 		tinyBBox := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(m.position), cube.FaceDown)
-		if m.velocity[1] == 0 || utils.BBoxIntersectsSolid(m.world, tinyBBox){
+		if utils.BBoxIntersectsSolid(m.world, tinyBBox) && m.velocity[1] <= 0{
 			m.velocity[1] = 0
 			m.blockSource = EdgeBlockSource{BlockMap: m.world}
 			return
@@ -107,8 +114,9 @@ func (m *Movement) simAState(pos, velocity mgl64.Vec3) physics.OutPhyState{
 	return out
 }
 
-// EdgeBlockSource is used instead of blockmap when the player is sneaking and have no verical speed, this type 
-// will provide extra BBox for some pos as boundaries to make sure the player wouldnt walk off edge when sneaking 
+// EdgeBlockSource is used instead of blockmap when the player is sneaking and is onGround, this type 
+// will provide an extra BBox for some pos as boundaries to make sure the player wouldnt walk off edge when sneaking, 
+// might be a bit more work than to just do the edge case in the collision logic, but it makes the code clearer in some way 
 type EdgeBlockSource struct{
 	*blockmap.BlockMap
     pPos     mgl64.Vec3
@@ -118,6 +126,9 @@ type EdgeBlockSource struct{
 func (e EdgeBlockSource) BlockModel(pos cube.Pos, layer uint8) (model world.BlockModel, exist bool){
 	blockUnderPos := pos.Sub(cube.Pos{0, 1, 0})
 	model, exist = e.BlockMap.BlockModel(pos, layer)
+	if model == nil{
+		return
+	}
 	if int(math.Floor(e.pPos[1] - MaxStepHeight)) != blockUnderPos[1] || layer != 0{
 		return
 	}
@@ -125,69 +136,86 @@ func (e EdgeBlockSource) BlockModel(pos cube.Pos, layer uint8) (model world.Bloc
 	ebboxMod := EdgeBBoxBlockModel{bboxs: model.BBox(pos, e.BlockMap)}
 	blockUnderDiff := blockUnderPos.Vec3().Sub(pos.Vec3())
 	underMod, _ := e.BlockMap.BlockModel(blockUnderPos, layer)
-	underBox := underMod.BBox(blockUnderPos, e.BlockMap)
-	sameY := func (self cube.BBox) bool{
-		return !(self.Max()[1] != e.pPos[1] || pos.Vec3().Add(blockUnderDiff)[1] < (self.Max()[1] - MaxStepHeight))
+	if underMod == nil{
+		return
 	}
-	minOffsetBBox := utils.Box(pos.Vec3(), pos.Vec3().Add(mgl64.Vec3{1, 1, 1})) // the boundaries bbox we are going to add
-	for axis := range e.velocity{
-		if axis == 1{
+	underBox := underMod.BBox(blockUnderPos, e.BlockMap)
+	// only bbox with Y in range of player PositionY-MaxStepHeight to PositionY can push the boundary
+	sameY := func (self cube.BBox) bool{
+		self = self.Translate(pos.Vec3())
+		return self.Max()[1] <= e.pPos[1] && self.Max()[1] >= e.pPos[1] - MaxStepHeight
+	}
+	for axis, plane := range e.velocity{
+		minOffsetBBox := utils.Box(mgl64.Vec3{}, mgl64.Vec3{}.Add(mgl64.Vec3{1, 1, 1})) // the boundary bbox we are going to add
+		if axis == 1 || plane == 0{
 			continue
 		}
 		pushedBBoxOnFace := false
 		underOnNearbyFace := utils.FaceOnDeltaAxis(e.velocity, axis)
 		pushBy := func (nearby cube.BBox) float64{
+			var pushBy float64
 			switch underOnNearbyFace{
 			case cube.FaceEast, cube.FaceSouth:
-				return nearby.Max()[axis] + boundaryOffset - minOffsetBBox.Min()[axis] 
+				if nearby.Min()[axis] - minOffsetBBox.Min()[axis] - utils.ProbeOffset >= 0{
+					return 0
+				}
+				pushBy = nearby.Max()[axis] + boundaryOffset - minOffsetBBox.Min()[axis] 
 			default:
-				return minOffsetBBox.Max()[axis] - (nearby.Min()[axis] - boundaryOffset)
+				if minOffsetBBox.Max()[axis] - nearby.Max()[axis] - utils.ProbeOffset >= 0{
+					return 0
+				}
+				pushBy = minOffsetBBox.Max()[axis] - (nearby.Min()[axis] - boundaryOffset)
 			}
+			return utils.RoundFloat(pushBy, 3)
 		}
-		pushFunc := func (nearby cube.BBox) bool{
+		push := func (nearby cube.BBox) bool{
 			pushBy := pushBy(nearby)
 			if (minOffsetBBox.Max()[axis] - minOffsetBBox.Min()[axis]) <= pushBy{
 				// boundary bbox is not in this blockUnderCube 
 				return false
 			}
 			if pushBy > 0{
-				minOffsetBBox = minOffsetBBox.ExtendTowards(underOnNearbyFace, pushBy-boundaryOffset)
+				minOffsetBBox = minOffsetBBox.ExtendTowards(underOnNearbyFace.Opposite(), -pushBy)
 				pushedBBoxOnFace = true
 			}
 			return true
 		}
 		nearbyCube := cubePosDiffWithFace(underOnNearbyFace.Opposite())
 		nearbyMod, _ := e.BlockMap.BlockModel(blockUnderPos.Add(nearbyCube), layer)
-		posDiff := nearbyCube.Vec3().Sub(pos.Vec3())
-		for _, bbox := range nearbyMod.BBox(nearbyCube, e.BlockMap){
-			bbox = bbox.Translate(posDiff)
+		if nearbyMod == nil{
+			continue
+		}
+		nearbyDiff := nearbyCube.Vec3().Add(blockUnderDiff)
+		for _, bbox := range nearbyMod.BBox(pos.Add(cube.PosFromVec3(nearbyDiff)), e.BlockMap){
+			bbox = bbox.Translate(nearbyDiff)
 			if !sameY(bbox){
 				continue
 			}
-			if !pushFunc(bbox){
+			if !push(bbox){
 				return 
 			}
-			if cube.PosFromVec3(e.pPos.Sub(mgl64.Vec3{0, MaxStepHeight})) != blockUnderPos{
-				for _, underBBox := range underBox{
-					underBBox = underBBox.Translate(blockUnderDiff)
-					if !sameY(underBBox){
-						continue
-					}
-					if !pushFunc(underBBox){
-						return
-					}
-				}
+		}
+		for _, underBBox := range underBox{
+			underBBox = underBBox.Translate(blockUnderDiff)
+			if !sameY(underBBox){
+				continue
+			}
+			if !push(underBBox){
+				return
 			}
 		}
 		if !pushedBBoxOnFace{
-			minOffsetBBox = minOffsetBBox.ExtendTowards(underOnNearbyFace, -boundaryOffset)
+			minOffsetBBox = minOffsetBBox.ExtendTowards(underOnNearbyFace.Opposite(), -boundaryOffset)
+		}
+		canReach := reachable(utils.PlayerSneakBBox(e.pPos.Sub(pos.Vec3())), minOffsetBBox, axis, e.velocity)
+		if canReach{
+			if e.velocity[(axis+2)%4] != 0{
+				minOffsetBBox = minOffsetBBox.ExtendTowards(utils.FaceOnDeltaAxis(e.velocity, (axis+2)%4), -boundaryOffset)
+			}
+			ebboxMod.bboxs = append(ebboxMod.bboxs, minOffsetBBox)
 		}
 	}
-	if !utils.PlayerSneakBBox(e.pPos).IntersectsWith(minOffsetBBox){
-		ebboxMod.bboxs = append(ebboxMod.bboxs, minOffsetBBox)
-		return ebboxMod, true
-	}
-	return
+	return ebboxMod, exist
 }
 
 func cubePosDiffWithFace(faces ...cube.Face) cube.Pos{
@@ -195,17 +223,17 @@ func cubePosDiffWithFace(faces ...cube.Face) cube.Pos{
 	for _, face := range faces{
 		switch face{
 		case cube.FaceDown:
-			cPos.Add(cube.Pos{0, -1, 0})
+			cPos = cPos.Add(cube.Pos{0, -1, 0})
 		case cube.FaceNorth:
-			cPos.Add(cube.Pos{0, 0, -1})
+			cPos = cPos.Add(cube.Pos{0, 0, -1})
 		case cube.FaceEast:
-			cPos.Add(cube.Pos{1, 0, 0})
+			cPos = cPos.Add(cube.Pos{1, 0, 0})
 		case cube.FaceSouth:
-			cPos.Add(cube.Pos{0, 0, 1})
+			cPos = cPos.Add(cube.Pos{0, 0, 1})
 		case cube.FaceWest:
-			cPos.Add(cube.Pos{-1, 0, 0})
+			cPos = cPos.Add(cube.Pos{-1, 0, 0})
 		case cube.FaceUp:
-			cPos.Add(cube.Pos{0, 1, 0})
+			cPos = cPos.Add(cube.Pos{0, 1, 0})
 		default:
 		}
 	}
@@ -222,4 +250,31 @@ func (em EdgeBBoxBlockModel) BBox(cube.Pos, world.BlockSource) []cube.BBox{
 
 func (em EdgeBBoxBlockModel) FaceSolid(cube.Pos,cube.Face, world.BlockSource) bool{
 	return false
+}
+
+
+func reachable(self, nearby cube.BBox, axis int, delta mgl64.Vec3) (reachable bool){	
+	reachable = false
+	var offset float64
+	if delta[axis] == 0{
+		return
+	}
+	if delta[axis] > 0 && self.Max()[axis] <= nearby.Min()[axis]+utils.Negligible {
+		offset = min(nearby.Min()[axis] - self.Max()[axis], delta[axis])
+	}else if delta[axis] < 0 && self.Min()[axis] >= nearby.Max()[axis]-utils.Negligible {
+		offset = max(nearby.Max()[axis] - self.Min()[axis], delta[axis])
+	}else{
+		return
+	}
+	var radio float64 = 1
+	if delta[axis] != 0{
+		radio = offset/delta[axis]
+	}
+	if mgl64.FloatEqualThreshold(offset, 0, 0.1){
+		offset = 0
+	}
+	if !utils.OutOfPlane(self.Translate(delta.Mul(radio)), nearby, axis){
+		reachable = true
+	}
+	return
 }

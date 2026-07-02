@@ -37,6 +37,7 @@ func (m *Movement) splitOutMovement() *OutMovement{
 	out.OnGround = m.onGround 
 	out.Input = m.Inputs
 	out.BaseSpeed = float32(m.baseSpeed)
+	m.flag = nil
 	return out
 }
 
