@@ -152,29 +152,33 @@ func BlockInBBox(bbox cube.BBox, bs world.BlockSource) iter.Seq2[cube.Pos, world
 	}
 }
 
-func TinyBBoxOnBBoxFace(self cube.BBox, face cube.Face) cube.BBox{
+func BBoxOnBBoxFaceWithThreshold(self cube.BBox, face cube.Face, threshold float64) cube.BBox{
 	min, max := self.Min(), self.Max()
 	switch face{
 	case cube.FaceUp:
 		min[1] = max[1]
-		max[1] += ProbeOffset
+		max[1] += threshold
 	case cube.FaceDown:
 		max[1] = min[1]
-		min[1] -= ProbeOffset
+		min[1] -= threshold
 	case cube.FaceNorth:
 		max[2] = min[2]
-		min[2] -= ProbeOffset
+		min[2] -= threshold
 	case cube.FaceEast:
 		min[0] = max[0]
-		max[0] += ProbeOffset
+		max[0] += threshold
 	case cube.FaceSouth:
 		min[2] = max[2]
-		max[2] += ProbeOffset
+		max[2] += threshold
 	default:
 		max[0] = min[0]
-		min[0] -= ProbeOffset
+		min[0] -= threshold
 	}
 	return cube.Box(min[0], min[1], min[2], max[0], max[1], max[2])
+}
+
+func TinyBBoxOnBBoxFace(self cube.BBox, face cube.Face) cube.BBox{
+	return BBoxOnBBoxFaceWithThreshold(self, face, ProbeOffset)
 }
 
 func FaceOnDeltaAxis(delta mgl64.Vec3, axis int) cube.Face{
