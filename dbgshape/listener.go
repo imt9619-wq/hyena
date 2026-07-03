@@ -135,7 +135,7 @@ func (c *debugShapeConn) addShape(shapeId uuid.UUID, shape AShape){
 	switch shape.Shape{
 	case Box:
 		s = &debug.Box{
-			Position: start,
+			Position: start.Add(end).Mul(0.5),
 			Bounds: end.Sub(start),
 		}
 	case Line:

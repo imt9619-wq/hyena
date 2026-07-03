@@ -8,7 +8,8 @@ import (
 func (c *Connection) StartRunning(once bool) {
 	c.state.Exec(func(q *game.Qx) {
 		c.state.Inputs().W.Pressed = true
-		c.state.Inputs().Sprint.Pressed = once
+		c.state.Inputs().Sprint.Pressed = true
+		c.state.Inputs().Sprint.PressOnce = once
 	})
 }
 
