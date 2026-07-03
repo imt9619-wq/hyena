@@ -66,6 +66,6 @@ func (gs *GameState) ReSimMoveAtTick(startTick uint, modF func(*movements.AMovem
 		mb.buf[ind+1] = nextOutData
 	}
 	lastTickOut := mb.buf[mb.lastTickInBuf-mb.firstTickInBuf]
-	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.Position, lastTickOut.Position, out.Position, startTick)
+	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.position, lastTickOut.Position, out.Position, startTick)
 	gs.player.copyOutMovement(lastTickOut)
 }

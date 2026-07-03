@@ -74,3 +74,7 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 	default:
 	}
 }
+
+func (c *Connection) GameState() *game.GameState{
+	return c.state
+}

@@ -2,13 +2,13 @@ package game
 
 import (
 	"fmt"
-	"time"
+	//"time"
 
-	"github.com/df-mc/dragonfly/server/block/cube"
+	//"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/movements"
-	"github.com/imt9619-wq/hyena/utils"
+	//"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -66,22 +66,22 @@ func (gs *GameState) EntityRunTimeId() uint64 {
 func (gs *GameState) Tick() {
 	gs.tick++
 	gs.setInputFlagBlockBreakingDelayEnabled()
-	gs.blockMap.UpdateChunkCentre(gs.player.Position)
+	gs.blockMap.UpdateChunkCentre(gs.player.position)
 	gs.blockMap.RefreshMapWithRenderDistance()
 	gs.doMovement()
 	gs.tickReset()
 }
 
 func (gs *GameState) doMovement(){
-	now := time.Now()
+	//now := time.Now()
 	out := gs.movement.SimMovementsWithFlags(gs.player.splitInMovement(&gs.tickInputDataFlags))
 	gs.setStateChangeFlags(out)	
 	gs.player.copyOutMovement(out)
 	gs.moveBuf.addTick(out)
 	gs.player.in = out.Input.NextTickPresses()
-	fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
-	fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
-	fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
+	//fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
+	//fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
+	//fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
 }
 
 func (gs *GameState) GStick() uint {

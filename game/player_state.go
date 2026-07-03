@@ -9,9 +9,9 @@ import (
 )
 
 type playerState struct {
-	Position mgl32.Vec3
-    Velocity mgl32.Vec3
-    OnGround bool
+	position mgl32.Vec3
+    velocity mgl32.Vec3
+    onGround bool
 	baseSpeed float32
 
 	in movements.Inputs
@@ -19,10 +19,10 @@ type playerState struct {
 
 func newPlayerState(conn *minecraft.Conn) *playerState {
 	ps := &playerState{
-		Position: conn.GameData().PlayerPosition,
+		position: conn.GameData().PlayerPosition,
 		in: movements.Inputs{},
-		Velocity: mgl32.Vec3{},
-		OnGround: false,
+		velocity: mgl32.Vec3{},
+		onGround: false,
 		baseSpeed: float32(movements.DefaultBaseSpeed),
 	}
 	ps.in.Yaw = conn.GameData().Yaw
@@ -33,23 +33,35 @@ func newPlayerState(conn *minecraft.Conn) *playerState {
 func (ps *playerState) setPlayerAuthInputWithPlayerState(pk *packet.PlayerAuthInput){
 	pk.Pitch, pk.InteractPitch = ps.in.Pitch, ps.in.Pitch
 	pk.Yaw, pk.InteractYaw, pk.HeadYaw = ps.in.Yaw, ps.in.Yaw, ps.in.Yaw
-	pk.Position = ps.Position
+	pk.Position = ps.position
 }
 
 func (ps *playerState) splitInMovement(flags *protocol.Bitset) *movements.InMovement{
 	in := &movements.InMovement{}
 	ps.in.InputFlags = flags
-	in.Position = ps.Position
-	in.OnGround = ps.OnGround
-	in.Velocity = ps.Velocity
+	in.Position = ps.position
+	in.OnGround = ps.onGround
+	in.Velocity = ps.velocity
 	in.Input = ps.in
 	in.BaseSpeed = ps.baseSpeed 
 	return in
 }
 
 func (ps *playerState) copyOutMovement(out *movements.OutMovement){
-	ps.Position = out.Position
-	ps.Velocity = out.Velocity
-	ps.OnGround = out.OnGround
+	ps.position = out.Position
+	ps.velocity = out.Velocity
+	ps.onGround = out.OnGround
 	ps.baseSpeed = out.BaseSpeed
+}
+
+func (ps *playerState) Position() mgl32.Vec3{
+	return ps.position
+}
+
+func (ps *playerState) Velocity() mgl32.Vec3{
+	return ps.velocity
+}
+
+func (ps *playerState) OnGround() bool{
+	return ps.onGround
 }
