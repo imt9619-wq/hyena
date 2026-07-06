@@ -5,11 +5,10 @@ import (
 
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/imt9619-wq/hyena/utils"
 )
 
 func (m *Movement) doMotions() {
-	m.setBBoxFunc()
+	m.setJumpCooldown()
 	m.setOnClimb()
 	m.setSlipperiness()
 	m.applyHorizontalMovement()
@@ -22,12 +21,12 @@ func (m *Movement) doMotions() {
 	m.applyGravity()
 }
 
-func (m *Movement) setBBoxFunc(){
-	if m.Shift.Pressed{
-		m.bboxFunc = utils.PlayerSneakBBox
-	}else{
-		m.bboxFunc = utils.PlayerBBox
+func (m *Movement) setJumpCooldown(){
+	if !m.IsJump(){
+		m.jumpCooldown = 0
+		return
 	}
+	m.jumpCooldown = max(0, m.jumpCooldown-1)
 }
 
 func (m *Movement) setOnClimb(){
@@ -81,9 +80,10 @@ func (m *Movement) jump() {
 		m.flag.WantUp = true
 		return
 	}
-	if m.onGround {
-		m.velocity[1] = JumpSpeed
+	if m.onGround && m.jumpCooldown == 0 {
+		m.velocity[1] = max(m.velocity[1], JumpSpeed)
 		m.flag.StartedJumping = true
+		m.jumpCooldown = 10
 	}
 }
 
@@ -106,7 +106,7 @@ func (m *Movement) run() {
 			m.velocity[2] += SprintJumpBoost * cosF
 		}
 	} else {
-		m.velocity[0] += AirborneAccelration * sinD
-		m.velocity[2] += AirborneAccelration * cosD
+		m.velocity[0] += AirborneAccelration * 0.98 * sinD
+		m.velocity[2] += AirborneAccelration * 0.98 * cosD
 	}
 }

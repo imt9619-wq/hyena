@@ -39,6 +39,5 @@ func (n NopEntity) BBox() cube.BBox{
 type OutPhyState struct {
 	Velocity mgl64.Vec3
 	Position mgl64.Vec3
-	Onground bool
 }
 

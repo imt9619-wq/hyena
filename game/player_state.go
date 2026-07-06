@@ -5,30 +5,26 @@ import (
 	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/sandertv/gophertunnel/minecraft"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type playerState struct {
-	position mgl32.Vec3
-    velocity mgl32.Vec3
-    onGround bool
-	baseSpeed float32
+	position     mgl32.Vec3
+    velocity     mgl32.Vec3
+    onGround     bool
+    baseSpeed    float32
+    jumpCooldown int
 
-	in input.Inputs
-	movement *movements.Movement
+    movement *movements.Movement
 }
 
 func newPlayerState(conn *minecraft.Conn, move *movements.Movement) *playerState {
 	ps := &playerState{
 		position: conn.GameData().PlayerPosition,
-		in: input.Inputs{},
 		velocity: mgl32.Vec3{},
 		onGround: false,
 		baseSpeed: float32(movements.DefaultBaseSpeed),
 		movement: move,
 	}
-	ps.in.Yaw = conn.GameData().Yaw
-	ps.in.Pitch = conn.GameData().Pitch
 	return ps
 }
 
@@ -43,15 +39,10 @@ func (ps *playerState) spiltInMovement(input input.Inputs) *movements.InMovement
 	in.Position = ps.position
 	in.OnGround = ps.onGround
 	in.Velocity = ps.velocity
-	in.Input = ps.in
+	in.Input = input
 	in.BaseSpeed = ps.baseSpeed 
+	in.JumpCooldown = ps.jumpCooldown
 	return in
-}
-
-func (ps *playerState) setPlayerAuthInputWithPlayerState(pk *packet.PlayerAuthInput){
-	pk.Pitch, pk.InteractPitch = ps.in.Pitch, ps.in.Pitch
-	pk.Yaw, pk.InteractYaw, pk.HeadYaw = ps.in.Yaw, ps.in.Yaw, ps.in.Yaw
-	pk.Position = ps.position
 }
 
 func (ps *playerState) copyMovement(out *movements.AMovement){
@@ -59,6 +50,7 @@ func (ps *playerState) copyMovement(out *movements.AMovement){
 	ps.velocity = out.Velocity
 	ps.onGround = out.OnGround
 	ps.baseSpeed = out.BaseSpeed
+	ps.jumpCooldown = out.JumpCooldown
 }
 
 func (ps *playerState) Position() mgl32.Vec3{

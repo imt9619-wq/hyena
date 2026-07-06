@@ -22,10 +22,7 @@ type moveBuf struct {
 
 func newMoveBuf(conn *minecraft.Conn) *moveBuf{
 	mb := &moveBuf{}
-	mb.bufSize = int(conn.GameData().PlayerMovementSettings.RewindHistorySize)
-	if mb.bufSize <= 0{
-		mb.bufSize = 1
-	}
+	mb.bufSize = max(3, int(conn.GameData().PlayerMovementSettings.RewindHistorySize))
 	mb.buf = make([]*move, 0, mb.bufSize*4)
 	return mb
 }
@@ -67,15 +64,18 @@ func (gs *GameState) ReSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 	}
 	in := out.simInMove
 	modF(in)
+	mb.buf[startTick-mb.firstTickInBuf].simInMove = in
 	for currTick := startTick; currTick <= mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		mb.buf[ind].simInMove = in
-		out := gs.player.movement.SimMovements(in)
+		out := gs.player.movement.SimMovements(mb.buf[ind].simInMove)
+		mb.buf[ind].simResult = out
+		in = &movements.InMovement{}
 		in.AMovement = out.AMovement
 		if currTick != mb.lastTickInBuf{
 			in.Input = mb.buf[ind+1].simInMove.Input
+			mb.buf[ind+1].simInMove = in
 		}
 	}
-	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, out.simInMove.Position, startTick)
+	fmt.Printf("(%0.3fms)resim pos %v to %v(in tick: %v)\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, startTick)
 	gs.player.copyMovement(&in.AMovement)
 }

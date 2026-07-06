@@ -8,11 +8,12 @@ import (
 )
 
 type AMovement struct {
-	Position   mgl32.Vec3
-    Velocity   mgl32.Vec3
-	
-	BaseSpeed  float32
-    OnGround   bool
+	Position mgl32.Vec3
+    Velocity mgl32.Vec3
+
+    JumpCooldown int
+    BaseSpeed    float32
+    OnGround     bool
 }
 
 type InMovement struct{
@@ -28,6 +29,7 @@ func (m *Movement) copyInMovement(in *InMovement) {
 	m.onGround = in.OnGround
 	m.Inputs = in.Input
 	m.baseSpeed = float64(in.BaseSpeed)
+	m.jumpCooldown = in.JumpCooldown
 	m.flag = MovementFlags{}
 }
 
@@ -43,13 +45,6 @@ func (m *Movement) splitOutMovement() *OutMovement{
 	out.OnGround = m.onGround 
 	out.BaseSpeed = float32(m.baseSpeed)
 	out.Flag = m.flag
+	out.JumpCooldown = m.jumpCooldown
 	return out
-}
-
-// doesnt copy input state and addedSpeed
-func (out *AMovement) CopyOutToMove(move *AMovement){
-	move.Position = out.Position
-	move.Velocity = out.Velocity
-	move.OnGround = out.OnGround
-	move.BaseSpeed = out.BaseSpeed
 }

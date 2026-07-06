@@ -44,7 +44,7 @@ type Movement struct {
     onClimb      bool
     slipperiness float64
 	baseSpeed    float64
-	bboxFunc   utils.BBoxFunc
+	jumpCooldown int
 
     flag         MovementFlags
 }

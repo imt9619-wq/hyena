@@ -125,7 +125,7 @@ func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool)
 	chunkPos := utils.CubePosToChunkPos(pos)
 	c, ok := b.chunkMap[chunkPos]
 	if !ok {
-		fmt.Printf("Tried to query out of render distance blocks (Cpos: %v)\n", chunkPos)
+		//fmt.Printf("Tried to query out of render distance blocks (Cpos: %v)\n", chunkPos)
 		bl = block.InvisibleBedrock{}
 		return
 	}

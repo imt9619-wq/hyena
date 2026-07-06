@@ -31,7 +31,7 @@ func EntityCollision(e PhysicsEntity) OutPhyState{
 	minZ := func (){
 		blocksIn = aabb.ExtendTowards(utils.FaceOnDeltaAxis(out.Velocity, 2), math.Abs(out.Velocity[2]))
 		for _, bbox := range utils.SweptBBoxInBBox(blocksIn, e.World()){
-			dx = aabb.ZOffset(bbox, dx)
+			dz = aabb.ZOffset(bbox, dz)
 		}
 		aabb = aabb.Translate(mgl64.Vec3{0, 0, dz})
 	}
@@ -45,7 +45,6 @@ func EntityCollision(e PhysicsEntity) OutPhyState{
 	}
 	out.Position = out.Position.Add(mgl64.Vec3{dx, dy, dz})
 	if dy != out.Velocity[1]{
-		out.Onground = true
 		out.Velocity[1] = 0
 	}
 	if dx != out.Velocity[0]{

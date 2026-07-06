@@ -21,20 +21,25 @@ func NewPathHandler() *Handler{
 	}
 }
 
-func (h *Handler) OnJoin(c *handler.Connection) {
+func (h *Handler) OnJoin(c *handler.Connection){
 	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
-	c.StartRunning(false)
-	c.StartJumping(false)
-	c.SetYaw(0)
+	c.SetYaw(-90)
 }
 
-func (h *Handler) OnDisconnect(c *handler.Connection, reason string) {
+func (h *Handler) OnBeforeTick(c *handler.Connection){
+	if c.GameState().GStick() == 100{
+		c.StartRunning(false)
+		c.StartJumping(false)
+	}
+}
+
+func (h *Handler) OnDisconnect(c *handler.Connection, reason string){
 	fmt.Printf("%s disconnected: %s\n", c.IdentityData().DisplayName, reason)
 	h.shape.Close()
 }
 
 func (h *Handler) OnAfterTick(c *handler.Connection){
-	h.writeShape(c)
+	//h.writeShape(c)
 }
 
 func (h *Handler) writeShape(c *handler.Connection){

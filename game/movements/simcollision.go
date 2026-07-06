@@ -40,7 +40,7 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 	if walkStairVelocity != zeroVelo{
 		veloLen = walkStairVelocity.Len()
 	}
-	pBBoxInStairs := m.bboxFunc(op.Position)
+	pBBoxInStairs := m.bbox(op.Position)
 	pBBoxInStairs = pBBoxInStairs.Extend(walkStairVelocity.Mul(utils.ProbeOffset/veloLen))
 	pBBoxInStairs = pBBoxInStairs.ExtendTowards(cube.FaceUp, MaxStepHeight)
 
