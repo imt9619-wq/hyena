@@ -90,8 +90,8 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 		switch an := attribute.Name; an {
 		case "minecraft:movement":
 			c.state.Exec(func(q *game.Qx) {
-				c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
-					a.BaseSpeed = attribute.Value
+				c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+					im.BaseSpeed = attribute.Value
 				})
 			})
 		}
@@ -107,9 +107,9 @@ func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
 		return
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
-			a.Velocity = pk.Velocity
-			a.Input.ServerSpeedAdd = mgl32.Vec3{}
+		c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+			im.Velocity = pk.Velocity
+			im.Input.ServerSpeedAdd = mgl32.Vec3{}
 		})
 	})
 }
@@ -134,11 +134,11 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 	}
 
 	c.state.Exec(func(q *game.Qx) {
-		c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
-			a.Position = pk.Position
-			a.OnGround = pk.OnGround
-			a.Input.Yaw = pk.Yaw
-			a.Input.Pitch = pk.Pitch
+		c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+			im.Position = pk.Position
+			im.OnGround = pk.OnGround
+			im.Input.Yaw = pk.Yaw
+			im.Input.Pitch = pk.Pitch
 		})
 		c.state.BlockMap().UpdateChunkCentre(pk.Position)
 		c.state.BlockMap().RefreshMapWithRenderDistance()
@@ -155,11 +155,11 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 	}
 	if pk.PredictionType == packet.PredictionTypePlayer{
 		c.state.Exec(func(q *game.Qx) {
-			c.state.ReSimMoveAtTick(uint(pk.Tick), func(a *movements.AMovement) {
-				a.Position = pk.Position
-				a.OnGround = pk.OnGround
-				a.Input.Yaw = pk.Rotation[1]
-				a.Input.Pitch = pk.Rotation[0]
+			c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+				im.Position = pk.Position
+				im.OnGround = pk.OnGround
+				im.Input.Yaw = pk.Rotation[1]
+				im.Input.Pitch = pk.Rotation[0]
 			})
 		})
 	}

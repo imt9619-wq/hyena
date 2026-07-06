@@ -15,7 +15,9 @@ func (c *Connection) tick() {
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
 	c.requestSubChunkInQuery()
-	c.WritePacket(c.state.PlayerAuthInputWithState())
+	for pk := range c.state.FlushPackets(){
+		c.WritePacket(pk)
+	}
 }
 
 func (c *Connection) startTicking() {

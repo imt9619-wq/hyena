@@ -6,10 +6,8 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/game/blockmap"
-	"github.com/imt9619-wq/hyena/game/movements/physics"
+	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/imt9619-wq/hyena/utils"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 const(
@@ -26,8 +24,18 @@ const(
 	SneakProbeBBoxShrinks  = float64(0.025)
 )
 
+type MovementFlags struct {
+    OnGround            bool
+    OnClimb             bool
+    HorizontalCollision bool
+    VerticalCollision   bool
+    StartedJumping      bool
+    WantUp              bool
+    WantDown            bool
+}
+
 type Movement struct {
-	Inputs
+	input.Inputs
 	world        *blockmap.BlockMap
     position     mgl64.Vec3
     velocity     mgl64.Vec3
@@ -38,14 +46,12 @@ type Movement struct {
 	baseSpeed    float64
 	bboxFunc   utils.BBoxFunc
 
-    flag         *protocol.Bitset
-    stateInWorld *physics.StateInWorld
+    flag         MovementFlags
 }
 
 func NewMovement(world *blockmap.BlockMap) *Movement {
 	return &Movement{
 		world: world,
-		stateInWorld: physics.NewStateInWorld(),
 		baseSpeed: DefaultBaseSpeed,
 	}
 }
@@ -95,23 +101,34 @@ func (m *Movement) stopOnEdge(){
 	}
 }
 
-func (m *Movement) SimMovementsWithFlags(in *InMovement) *OutMovement{
-	m.flag = in.Input.InputFlags
-	return m.SimMovements(in)
-}
-
 func (m *Movement) setOnGround() {
 	m.onGround = false
 	tinyBBox := utils.TinyBBoxOnBBoxFace(utils.PlayerBBox(m.position), cube.FaceDown)
 	if m.velocity[1] == 0 && utils.BBoxIntersectsSolid(m.world, tinyBBox) {
 		m.onGround = true
-		m.setFlag(packet.InputFlagVerticalCollision)
+		m.flag.VerticalCollision = true
 	}
 }
 
-func (m *Movement) setFlag(i int){
-	if m.flag == nil{
-		return
+func (m *Movement) Velocity() mgl64.Vec3{
+	return utils.RoundVecTo5Decimal(m.velocity)
+}
+
+func (m *Movement) Position() mgl64.Vec3{
+	return utils.RemoveDeltaEpsilon(m.position)
+}
+
+func (m *Movement) BBox() cube.BBox{
+	return m.bbox(m.Position())
+}
+
+func (m *Movement) bbox(pos mgl64.Vec3) cube.BBox{
+	if m.IsSneak(){
+		return utils.PlayerSneakBBox(pos)
 	}
-	(*m.flag).Set(i)
+	return utils.PlayerBBox(pos)
+}
+
+func (m *Movement) World() utils.BlockSourse{
+	return m.world
 }

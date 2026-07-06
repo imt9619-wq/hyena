@@ -8,11 +8,16 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft"
 )
 
+type move struct{
+	simInMove *movements.InMovement
+	simResult *movements.OutMovement
+}
+
 type moveBuf struct {
 	lastTickInBuf  uint
 	firstTickInBuf uint
 	bufSize        int
-	buf            []*movements.OutMovement
+	buf            []*move
 }
 
 func newMoveBuf(conn *minecraft.Conn) *moveBuf{
@@ -21,12 +26,12 @@ func newMoveBuf(conn *minecraft.Conn) *moveBuf{
 	if mb.bufSize <= 0{
 		mb.bufSize = 1
 	}
-	mb.buf = make([]*movements.OutMovement, 0, mb.bufSize)
+	mb.buf = make([]*move, 0, mb.bufSize*4)
 	return mb
 }
 
 // add an outMovement to buffer after finishing a tick for movement simulation
-func (mb *moveBuf) addTick(newOutMove *movements.OutMovement){
+func (mb *moveBuf) addTick(newInMove *movements.InMovement, newOutMove *movements.OutMovement){
 	if mb.bufSize == 0{
 		return
 	}
@@ -38,34 +43,39 @@ func (mb *moveBuf) addTick(newOutMove *movements.OutMovement){
 		mb.buf = mb.buf[1:]
 	}
 	mb.lastTickInBuf += 1
-	mb.buf = append(mb.buf, newOutMove)
+	mb.buf = append(mb.buf, &move{simInMove: newInMove, simResult: newOutMove})
 }
 
-func (mb *moveBuf) outMoveWithTick(tick uint) (*movements.OutMovement, bool){
+func (mb *moveBuf) outMoveWithTick(tick uint) (*move, bool){
 	if mb.firstTickInBuf <= tick && mb.lastTickInBuf >= tick && len(mb.buf) != 0{
 		return mb.buf[int(tick-mb.firstTickInBuf)], true
 	}
 	return nil, false
 }
 
-func (gs *GameState) ReSimMoveAtTick(startTick uint, modF func(*movements.AMovement)){
+func (gs *GameState) ReSimMoveAtTick(tick uint, modF func(*movements.InMovement)){
 	now := time.Now()
+	startTick := tick + 1
 	mb := gs.moveBuf
 	out, ok := mb.outMoveWithTick(startTick)
-	if !ok || gs.tick == startTick{
-		in := gs.player.splitInMovement(&gs.tickInputDataFlags)
-		modF((*movements.AMovement)(in))
-		gs.player.copyOutMovement((*movements.OutMovement)(in))
+	if !ok{
+		in := gs.player.spiltInMovement(gs.in)
+		modF(in)
+		gs.player.copyMovement(&in.AMovement)
+		gs.in = in.Input
 		return
 	}
-	modF((*movements.AMovement)(out))
-	for currTick := startTick; currTick < mb.lastTickInBuf; currTick++{
+	in := out.simInMove
+	modF(in)
+	for currTick := startTick; currTick <= mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		nextOutData := gs.movement.SimMovements((*movements.InMovement)(mb.buf[ind]))
-		(*movements.AMovement)(mb.buf[ind+1]).CopyInputToMove((*movements.AMovement)(nextOutData))
-		mb.buf[ind+1] = nextOutData
+		mb.buf[ind].simInMove = in
+		out := gs.player.movement.SimMovements(in)
+		in.AMovement = out.AMovement
+		if currTick != mb.lastTickInBuf{
+			in.Input = mb.buf[ind+1].simInMove.Input
+		}
 	}
-	lastTickOut := mb.buf[mb.lastTickInBuf-mb.firstTickInBuf]
-	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.position, lastTickOut.Position, out.Position, startTick)
-	gs.player.copyOutMovement(lastTickOut)
+	fmt.Printf("(%0.3fms)resim pos %v to %v(in: %v(tick: %v))\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, out.simInMove.Position, startTick)
+	gs.player.copyMovement(&in.AMovement)
 }

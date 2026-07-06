@@ -3,6 +3,7 @@ package movements
 import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/go-gl/mathgl/mgl64"
+	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/imt9619-wq/hyena/utils"
 )
 
@@ -12,11 +13,12 @@ type AMovement struct {
 	
 	BaseSpeed  float32
     OnGround   bool
-    
-	Input Inputs
 }
 
-type InMovement AMovement
+type InMovement struct{
+	AMovement
+	Input input.Inputs
+} 
 
 func (m *Movement) copyInMovement(in *InMovement) {
 	m.velocity = utils.Mgl32Vec3Tomgl64Vec3(in.Velocity.Add(in.Input.ServerSpeedAdd))
@@ -26,18 +28,21 @@ func (m *Movement) copyInMovement(in *InMovement) {
 	m.onGround = in.OnGround
 	m.Inputs = in.Input
 	m.baseSpeed = float64(in.BaseSpeed)
+	m.flag = MovementFlags{}
 }
 
-type OutMovement AMovement
+type OutMovement struct{
+	AMovement
+	Flag MovementFlags
+}
 
 func (m *Movement) splitOutMovement() *OutMovement{
 	out := &OutMovement{}
 	out.Velocity = utils.Mgl64Vec3Tomgl32Vec3(m.velocity)
 	out.Position = utils.Mgl64Vec3Tomgl32Vec3(m.position.Add(mgl64.Vec3{0, utils.NetworkOffset, 0}))
 	out.OnGround = m.onGround 
-	out.Input = m.Inputs
 	out.BaseSpeed = float32(m.baseSpeed)
-	m.flag = nil
+	out.Flag = m.flag
 	return out
 }
 
@@ -47,8 +52,4 @@ func (out *AMovement) CopyOutToMove(move *AMovement){
 	move.Velocity = out.Velocity
 	move.OnGround = out.OnGround
 	move.BaseSpeed = out.BaseSpeed
-}
-
-func (provide *AMovement) CopyInputToMove(receiver *AMovement){
-	receiver.Input = provide.Input
 }

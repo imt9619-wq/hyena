@@ -1,10 +1,9 @@
-package movements
+package input
 
 import (
 	"math"
 
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
 // Represent the minic of keyBoard input
@@ -15,12 +14,12 @@ type Inputs struct{
     // ServerSpeedAdd refer to the velocity value that is added by knockback, explorsion...(Basically
     // velocity that is not contributed by client input)
     ServerSpeedAdd mgl32.Vec3
-    InputFlags     *protocol.Bitset
 }
 
 type Keys struct{
-	W, A, S, D           KeyPress
-    Space, Shift, Sprint KeyPress
+	W, A, S, D            KeyPress
+    Space, Shift, Sprint  KeyPress
+    RightClick, LeftClick KeyPress
 }
 
 type KeyPress struct{
@@ -37,6 +36,8 @@ func (in Inputs) NextTickPresses() Inputs{
 	nextIn.Sprint = in.Sprint.nextTickPress()
 	nextIn.Shift = in.Shift.nextTickPress()
 	nextIn.Space = in.Space.nextTickPress()
+	nextIn.RightClick = in.RightClick.nextTickPress()
+	nextIn.LeftClick = in.LeftClick.nextTickPress()
 	nextIn.Yaw, nextIn.Pitch = in.Yaw, in.Pitch
 	return nextIn
 }
@@ -60,7 +61,7 @@ var directionToOffsets = map[[2]int]float64{
     { 1,  1}:   45.0,
 }
 
-func (k Keys) keyOffsets() float64{
+func (k Keys) KeyOffsets() float64{
 	var frontBack, rightLeft int
 	if !(k.W.Pressed == k.S.Pressed){
 		if k.W.Pressed{
@@ -79,9 +80,9 @@ func (k Keys) keyOffsets() float64{
 	return directionToOffsets[[2]int{frontBack, rightLeft}]
 }
 
-func (k Keys) movementMultiplier() float64{
+func (k Keys) MovementMultiplier() float64{
 	dirMul := func() float64{
-		if k.keyOffsets() == 45 || k.keyOffsets() == -45{
+		if k.KeyOffsets() == 45 || k.KeyOffsets() == -45{
 			if k.Shift.Pressed{
 				return math.Sqrt(2) * 0.98
 			}
@@ -127,7 +128,7 @@ func (k Keys) IsRightWalk() bool{
 }
 
 func (k Keys) IsStrafe() bool{
-	return k.keyOffsets() == 45 || k.keyOffsets() == -45
+	return k.KeyOffsets() == 45 || k.KeyOffsets() == -45
 }
 
 func (k Keys) IsLeftWalk() bool{

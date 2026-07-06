@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/imt9619-wq/hyena/game"
-	"github.com/imt9619-wq/hyena/game/movements"
+	"github.com/imt9619-wq/hyena/game/input"
 )
 
 func (c *Connection) StartRunning(once bool) {
@@ -15,8 +15,8 @@ func (c *Connection) StartRunning(once bool) {
 
 func (c *Connection) StopRunning() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().W = movements.KeyPress{}
-		c.state.Inputs().Sprint = movements.KeyPress{}
+		c.state.Inputs().W = input.KeyPress{}
+		c.state.Inputs().Sprint = input.KeyPress{}
 	})
 }
 
@@ -29,7 +29,7 @@ func (c *Connection) StartJumping(once bool) {
 
 func (c *Connection) StopJumping() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Space = movements.KeyPress{}
+		c.state.Inputs().Space = input.KeyPress{}
 	})
 }
 
@@ -48,6 +48,6 @@ func (c *Connection) StartSneaking(once bool){
 
 func (c *Connection) StopSneaking() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Shift = movements.KeyPress{}
+		c.state.Inputs().Shift = input.KeyPress{}
 	})
 }

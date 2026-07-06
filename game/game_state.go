@@ -1,13 +1,15 @@
 package game
 
 import (
-	"fmt"
+	//"fmt"
 	//"time"
 
 	//"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
+	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/imt9619-wq/hyena/game/movements"
+
 	//"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -22,30 +24,30 @@ type GameState struct {
     entityRuntimeID    uint64
     blockMap           *blockmap.BlockMap
     tickInputDataFlags protocol.Bitset
-
+	in       input.Inputs
     player   *playerState
-    movement *movements.Movement
     moveBuf  *moveBuf
 
     queue  chan *queueTransition
     tick   uint
     closed chan struct{}
+
+	packets packetBuffer
 }
 
 func NewGameState(conn *minecraft.Conn) *GameState {
 	gs := &GameState{
+		entityRuntimeID: conn.GameData().EntityRuntimeID,
 		clientData:  conn.ClientData(),
-		player:      newPlayerState(conn),
 		blockMap:    blockmap.NewBlockMap(conn),
 		moveBuf:     newMoveBuf(conn),
 		queue:       make(chan *queueTransition, 512),
 		closed: 	 make(chan struct{}),
 		tick:        0,
+		packets:	 make(packetBuffer, 0, 10),
 	}
-	fmt.Printf("Rewind size: %v\n", conn.GameData().PlayerMovementSettings.RewindHistorySize)
 	gs.resetFlags()
-	gs.movement = movements.NewMovement(gs.blockMap)
-	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
+	gs.player = newPlayerState(conn, movements.NewMovement(gs.blockMap))
 	gs.startRunningQueue()
 	return gs
 }
@@ -69,16 +71,17 @@ func (gs *GameState) Tick() {
 	gs.blockMap.UpdateChunkCentre(gs.player.position)
 	gs.blockMap.RefreshMapWithRenderDistance()
 	gs.doMovement()
+	gs.packets.append(gs.PlayerAuthInputWithState())
 	gs.tickReset()
 }
 
 func (gs *GameState) doMovement(){
 	//now := time.Now()
-	out := gs.movement.SimMovementsWithFlags(gs.player.splitInMovement(&gs.tickInputDataFlags))
+	in := gs.player.spiltInMovement(gs.in)
+	out := gs.player.doMove(in)
 	gs.setStateChangeFlags(out)	
-	gs.player.copyOutMovement(out)
-	gs.moveBuf.addTick(out)
-	gs.player.in = out.Input.NextTickPresses()
+	gs.moveBuf.addTick(in, out)
+	gs.in = gs.in.NextTickPresses()
 	//fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
 	//fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
 	//fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
@@ -88,8 +91,8 @@ func (gs *GameState) GStick() uint {
 	return gs.tick
 }
 
-func (gs *GameState) Inputs() *movements.Inputs{
-	return &gs.player.in
+func (gs *GameState) Inputs() *input.Inputs{
+	return &gs.in
 }
 
 func (gs *GameState) Player() *playerState {
@@ -97,11 +100,11 @@ func (gs *GameState) Player() *playerState {
 }
 
 func (gs *GameState) setStateChangeFlags(nowOut *movements.OutMovement){
-	out, ok := gs.moveBuf.outMoveWithTick(gs.tick-1)
-	nowIn := nowOut.Input
-	lastIn := movements.Inputs{}
+	in, ok := gs.moveBuf.outMoveWithTick(gs.tick-1)
+	nowIn := gs.in
+	lastIn := input.Inputs{}
 	if ok{
-		lastIn = out.Input
+		lastIn = in.simInMove.Input
 	}
 	if !lastIn.Space.Pressed && nowIn.Space.Pressed{
 		gs.SetFlag(packet.InputFlagJumpPressedRaw)
@@ -117,10 +120,7 @@ func (gs *GameState) setStateChangeFlags(nowOut *movements.OutMovement){
 		gs.SetFlag(packet.InputFlagStopSneaking)
 		gs.SetFlag(packet.InputFlagSneakReleasedRaw)
 	}
-	if !ok{
-		return
-	}
-	if lastIn.InputFlags.Load(packet.InputFlagSprinting) && !nowIn.InputFlags.Load(packet.InputFlagSprinting){
+	if !lastIn.Sprint.Pressed && !nowIn.Sprint.Pressed{
 		gs.SetFlag(packet.InputFlagStopSprinting)
 	}
 }
@@ -135,5 +135,4 @@ func flagLoad(flags *protocol.Bitset, flag int) bool{
 func (gs *GameState) tickReset(){
 	gs.resetFlags()
 	gs.player.in.ServerSpeedAdd = mgl32.Vec3{}
-	gs.player.in.InputFlags = &gs.tickInputDataFlags
 }

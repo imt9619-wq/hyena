@@ -3,16 +3,16 @@ package movements
 import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
-	"github.com/imt9619-wq/hyena/game/movements/physics"
+	"github.com/imt9619-wq/hyena/game/physics"
 	"github.com/imt9619-wq/hyena/utils"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (m *Movement) simCollision(){
-	pos, velocity := m.doNormalCollisionThenStepAssist()
+	out := physics.EntityCollision(m)
+	pos, velocity := m.doStepAssist(out)
 	for axis, plane := range velocity{
 		if axis != 1 && plane == 0 && m.velocity[axis] != 0{
-			m.setFlag(packet.InputFlagHorizontalCollision)
+			m.flag.HorizontalCollision = true
 			break
 		}
 	}
@@ -46,10 +46,10 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 
 	for _, blockBox := range utils.SweptBBoxInBBox(pBBoxInStairs, m.world){
 		if pBBoxInStairs.IntersectsWith(blockBox){
-			if blockBox.Min()[1] >= op.AABB.Max()[1]{
-				ceilHeight = min(ceilHeight, blockBox.Min()[1]-op.AABB.Max()[1])
-			}else if blockBox.Max()[1] >= op.AABB.Min()[1]{
-				stepHeight = max(stepHeight, blockBox.Max()[1]-op.AABB.Min()[1])
+			if blockBox.Min()[1] >= m.BBox().Max()[1]{
+				ceilHeight = min(ceilHeight, blockBox.Min()[1]-m.BBox().Max()[1])
+			}else if blockBox.Max()[1] >= m.BBox().Min()[1]{
+				stepHeight = max(stepHeight, blockBox.Max()[1]-m.BBox().Min()[1])
 			}				
 		}
 	}
@@ -62,7 +62,13 @@ func (m *Movement) doStepAssist(op physics.OutPhyState) (pos, velocity mgl64.Vec
 		velocityAfterStair[1] = 0
 	}
 	
-	stepOp := m.simAState(m.position.Add(mgl64.Vec3{0, stepHeight, 0}), velocityAfterStair)
+	stepEnt := physics.NopEntity{
+		Pos: m.position.Add(mgl64.Vec3{0, stepHeight, 0}),
+		Vec: velocityAfterStair,
+		Bs: m.world,
+	}
+	stepEnt.AAbb = m.bbox(stepEnt.Position())
+	stepOp := physics.EntityCollision(stepEnt)
 	if stepOp.Position.Sub(m.position).Len() <= pos.Sub(m.position).Len(){
 		return
 	}
@@ -75,18 +81,4 @@ func (m *Movement) pasteStateToMovements(pos, velocity mgl64.Vec3){
 	if mgl64.FloatEqualThreshold(m.position[1], float64(m.world.Dimension().Range()[0]), utils.Negligible){
 		m.position[1] = float64(m.world.Dimension().Range()[0])
 	}
-}
-
-func (m *Movement) doNormalCollisionThenStepAssist() (mgl64.Vec3, mgl64.Vec3){
-	return m.doStepAssist(m.simAState(m.position, m.velocity))
-}
-
-func (m *Movement) simAState(pos, velocity mgl64.Vec3) physics.OutPhyState{
-	out := m.stateInWorld.SimState(physics.InPhyState{
-		Position: pos,
-		Velocity: velocity,
-		BBoxFunc: m.bboxFunc,
-		BlockSource: m.world,
-	})
-	return out
 }

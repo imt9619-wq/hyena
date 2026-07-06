@@ -219,6 +219,18 @@ func SessionDbgShapeConn(s *session.Session) (*debugShapeConn, bool){
 	return wrapped, true
 }
 
+func RemoveSessionShapes(s *session.Session, tx *world.Tx){
+	d, ok := SessionDbgShapeConn(s)
+	if !ok{
+		return
+	}
+	for _, s := range d.Shapes(){
+		for e := range tx.Players(){
+			e.(*player.Player).RemoveDebugShape(s)
+		}
+	}
+}
+
 func (d *debugShapeConn) Shapes() iter.Seq2[uuid.UUID, debug.Shape]{
 	return func(yield func(uuid.UUID, debug.Shape) bool) {
 		d.idMapMu.Lock()

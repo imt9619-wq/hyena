@@ -6,7 +6,6 @@ import (
 	"github.com/df-mc/dragonfly/server/block/cube"
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/imt9619-wq/hyena/utils"
-	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (m *Movement) doMotions() {
@@ -21,15 +20,6 @@ func (m *Movement) doMotions() {
 		m.run()
 	}
 	m.applyGravity()
-	if m.Shift.Pressed{
-		m.sneak()
-	}
-}
-
-func (m *Movement) sneak(){
-	m.setFlag(packet.InputFlagSneaking)
-	m.setFlag(packet.InputFlagSneakDown)
-	m.setFlag(packet.InputFlagSneakCurrentRaw)
 }
 
 func (m *Movement) setBBoxFunc(){
@@ -43,6 +33,7 @@ func (m *Movement) setBBoxFunc(){
 func (m *Movement) setOnClimb(){
 	if m.world.Hblock(cube.PosFromVec3(m.position)).Climbable(){
 		m.onClimb = true
+		m.flag.OnClimb = true
 	}else{
 		m.onClimb = false
 	}
@@ -55,7 +46,7 @@ func (m *Movement) applyGravity() {
 	}
 	if m.onClimb && !m.Space.Pressed && !m.Shift.Pressed{
 		m.velocity[1] = ClimbSpeed * -1
-		m.setFlag(packet.InputFlagWantDown)
+		m.flag.WantDown = true
 	}
 }
 
@@ -87,16 +78,13 @@ func (m *Movement) applyHorizontalMovement() {
 func (m *Movement) jump() {
 	if m.onClimb{
 		m.velocity[1] = ClimbSpeed
-		m.setFlag(packet.InputFlagWantUp)
+		m.flag.WantUp = true
 		return
 	}
 	if m.onGround {
 		m.velocity[1] = JumpSpeed
-		m.setFlag(packet.InputFlagStartJumping)
+		m.flag.StartedJumping = true
 	}
-	m.setFlag(packet.InputFlagJumping)
-	m.setFlag(packet.InputFlagJumpCurrentRaw)
-	m.setFlag(packet.InputFlagJumpDown)
 }
 
 func (m *Movement) run() {
@@ -104,12 +92,12 @@ func (m *Movement) run() {
 	// sin is reverse for minecraft yaw
 	sinF := -math.Sin(yawRad)
 	cosF := math.Cos(yawRad)
-	dirRad := (m.keyOffsets() + m.yaw) * (math.Pi / 180)
+	dirRad := (m.KeyOffsets() + m.yaw) * (math.Pi / 180)
 	sinD := -math.Sin(dirRad)
 	cosD := math.Cos(dirRad)
 
 	if m.onGround {
-		accel := m.baseSpeed * m.movementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
+		accel := m.baseSpeed * m.MovementMultiplier() * math.Pow(0.6/m.slipperiness, 3)
 		m.velocity[0] += accel * sinD
 		m.velocity[2] += accel * cosD
 
@@ -121,37 +109,4 @@ func (m *Movement) run() {
 		m.velocity[0] += AirborneAccelration * sinD
 		m.velocity[2] += AirborneAccelration * cosD
 	}
-	m.setHorizontalFlags()
-}
-
-func (m *Movement) setHorizontalFlags(){
-	if m.IsSprinting(){
-		m.setFlag(packet.InputFlagSprintDown)
-		m.setFlag(packet.InputFlagSprinting)
-		m.setFlag(packet.InputFlagStartSprinting)
-	}
-	if m.IsUpWalk(){
-		m.setFlag(packet.InputFlagUp)
-	}
-	if m.IsDownWalk(){
-		m.setFlag(packet.InputFlagDown)
-	}
-	if m.IsRightWalk(){
-		m.setFlag(packet.InputFlagRight)
-	}
-	if m.IsLeftWalk(){
-		m.setFlag(packet.InputFlagLeft)
-	}
-
-	switch m.keyOffsets(){
-	case 45:
-		m.setFlag(packet.InputFlagUpRight)
-	case 135:
-		m.setFlag(packet.InputFlagDownRight)
-	case -135:
-		m.setFlag(packet.InputFlagDownLeft)
-	case -45:
-		m.setFlag(packet.InputFlagUpLeft)
-	default:
-	} 
 }

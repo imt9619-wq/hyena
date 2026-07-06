@@ -4,69 +4,61 @@ package dbgshape
 package main
 
 import (
-	"fmt"
-	"github.com/df-mc/dragonfly/server"
-	"github.com/df-mc/dragonfly/server/player/chat"
-	"github.com/pelletier/go-toml"
-	"github.com/imt9619-wq/hyena/dbgshape"
-	"log/slog"
-	"os"
+    "fmt"
+    "github.com/df-mc/dragonfly/server"
+    "github.com/df-mc/dragonfly/server/player/chat"
+    "github.com/pelletier/go-toml"
+    "github.com/imt9619-wq/hyena/dbgshape"
+    "log/slog"
+    "os"
 )
 
 func main() {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-	chat.Global.Subscribe(chat.StdoutSubscriber{})
-	conf, err := readConfig(slog.Default())
-	if err != nil {
-		panic(err)
-	}
+    slog.SetLogLoggerLevel(slog.LevelDebug)
+    chat.Global.Subscribe(chat.StdoutSubscriber{})
+    conf, err := readConfig(slog.Default())
+    if err != nil {
+        panic(err)
+    }
 
-	srv := conf.New()
-	srv.CloseOnProgramEnd()
+    srv := conf.New()
+    srv.CloseOnProgramEnd()
 
-	srv.Listen()
-	for p := range srv.Accept() {
-		dbgshape.SetServerForConn(p.Data().Session, srv)
-		p.Handle(Handler{})
-	}
+    srv.Listen()
+    for p := range srv.Accept() {
+        dbgshape.SetServerForConn(p.Data().Session, srv)
+        p.Handle(Handler{})
+    }
 }
 
 type Handler struct{}
 
-func (h Handler) HandleQuit(p *player.Player) {
-	d, ok := dbgshape.SessionDbgShapeConn(p.Data().Session)
-	if !ok{
-		return
-	}
-	for _, s := range d.Shapes(){
-		for e := range p.Tx().Players(){
-			e.(*player.Player).RemoveDebugShape(s)
-		}
-	}
+func (h Handler) HandleQuit(p player.Player) {
+    dbgshape.RemoveSessionShapes(p.Data().Session, p.Tx())
 }
 
 // readConfig reads the configuration from the config.toml file, or creates the
 // file if it does not yet exist.
-func readConfig(log *slog.Logger) (server.Config, error) {
-	c := server.DefaultConfig()
-	var zero server.Config
-	if _, err := os.Stat("config.toml"); os.IsNotExist(err) {
-		data, err := toml.Marshal(c)
-		if err != nil {
-			return zero, fmt.Errorf("encode default config: %v", err)
-		}
-		if err := os.WriteFile("config.toml", data, 0644); err != nil {
-			return zero, fmt.Errorf("create default config: %v", err)
-		}
-		return dbgshape.DebugShapeListener(c, log)
-	}
-	data, err := os.ReadFile("config.toml")
-	if err != nil {
-		return zero, fmt.Errorf("read config: %v", err)
-	}
-	if err := toml.Unmarshal(data, &c); err != nil {
-		return zero, fmt.Errorf("decode config: %v", err)
-	}
-	return dbgshape.DebugShapeListener(c, log)
+func readConfig(logslog.Logger) (server.Config, error) {
+    c := server.DefaultConfig()
+    var zero server.Config
+    if _, err := os.Stat("config.toml"); os.IsNotExist(err) {
+        data, err := toml.Marshal(c)
+        if err != nil {
+            return zero, fmt.Errorf("encode default config: %v", err)
+        }
+        if err := os.WriteFile("config.toml", data, 0644); err != nil {
+            return zero, fmt.Errorf("create default config: %v", err)
+        }
+        return dbgshape.DebugShapeListener(c, log)
+    }
+    data, err := os.ReadFile("config.toml")
+    if err != nil {
+        return zero, fmt.Errorf("read config: %v", err)
+    }
+    if err := toml.Unmarshal(data, &c); err != nil {
+        return zero, fmt.Errorf("decode config: %v", err)
+    }
+    return dbgshape.DebugShapeListener(c, log)
 }
 */
