@@ -19,7 +19,7 @@ func defaultClientData() login.ClientData{
 	return cd
 }
 
-func (a *Account) JoinServer(serverAddress string, h handler.Handler) error {
+func (a *Account) JoinServer(serverAddress string, h handler.Handler) (chan struct{}, error) {
 	if h == nil{
 		h = handler.NopConnHandler{}
 	}
@@ -30,12 +30,12 @@ func (a *Account) JoinServer(serverAddress string, h handler.Handler) error {
 		ClientData: defaultClientData(),
 	}.Dial("raknet", serverAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = serverConn.DoSpawn(); err != nil {
 		serverConn.Close()
-		return err
+		return nil, err
 	}
 
 	session := a.newSession(serverConn, h)
@@ -44,8 +44,8 @@ func (a *Account) JoinServer(serverAddress string, h handler.Handler) error {
 	case a.sessionQueue <- session:
 	case <-a.managerClosed:
 		session.markClosed()
-		return errors.New("manager is closed")
+		return nil, errors.New("manager is closed")
 	}
 
-	return nil
+	return session.connection.Closed(), nil
 }

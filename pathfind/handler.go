@@ -22,14 +22,13 @@ func NewPathHandler() *Handler{
 }
 
 func (h *Handler) OnJoin(c *handler.Connection){
-	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
+	//fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 	c.SetYaw(-90)
 }
 
 func (h *Handler) OnBeforeTick(c *handler.Connection){
-	if c.GameState().GStick() == 100{
-		c.StartRunning(false)
-		c.StartJumping(false)
+	if c.GameState().GStick()%200 == 0{
+		c.StartJumping(true)
 	}
 }
 
