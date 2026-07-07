@@ -71,10 +71,23 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 		c.replyMovePlayer(pk)
 	case *packet.CorrectPlayerMovePrediction:
 		c.replyCorrectPlayerMovePrediction(pk)
+	case *packet.InventoryContent:
+		c.replyInventoryContent(pk)
+	case *packet.MobEquipment:
+		c.replyMobEquipment(pk)
+	case *packet.ModalFormRequest:
+		c.replyModalFormRequest(pk)
 	default:
 	}
 }
 
 func (c *Connection) GameState() *game.GameState{
 	return c.state
+}
+
+func (c *Connection) requestNetworkStackLatency(pk *packet.NetworkStackLatency) {
+	c.WritePacket(&packet.NetworkStackLatency{
+		Timestamp:     pk.Timestamp * 1000000,
+		NeedsResponse: true,
+	})
 }

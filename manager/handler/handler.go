@@ -20,12 +20,18 @@ type Handler interface {
 	OnUpdateBlock(*Context, *packet.UpdateBlock)
 	OnMovePlayer(*Context, *packet.MovePlayer)
 	OnCorrectPlayerMovePrediction(*Context, *packet.CorrectPlayerMovePrediction)
+	OnInventoryContent(*Context, *packet.InventoryContent)
+	OnMobEquipment(*Context, *packet.MobEquipment)
+	OnModalFormRequest(*Context, *packet.ModalFormRequest)
 }
 
 type NopConnHandler struct{}
 
 var _ Handler = NopConnHandler{}
 
+func (h NopConnHandler) OnModalFormRequest(*Context, *packet.ModalFormRequest){}
+func (h NopConnHandler) OnMobEquipment(*Context, *packet.MobEquipment){}
+func (h NopConnHandler) OnInventoryContent(*Context, *packet.InventoryContent){}
 func (h NopConnHandler) OnDisconnect(*Connection, string){}
 func (h NopConnHandler) OnJoin(*Connection){}
 func (h NopConnHandler) OnBeforeTick(*Connection){}

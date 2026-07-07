@@ -1,16 +1,15 @@
 package game
 
 import (
-	//"fmt"
-	//"time"
+	"iter"
 
-	//"github.com/df-mc/dragonfly/server/block/cube"
-	"github.com/go-gl/mathgl/mgl32"
+	"github.com/df-mc/dragonfly/server/world"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/input"
+	"github.com/imt9619-wq/hyena/game/itemstack"
 	"github.com/imt9619-wq/hyena/game/movements"
+	"github.com/imt9619-wq/hyena/utils/pkbuf"
 
-	//"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/login"
@@ -20,35 +19,37 @@ import (
 // GameState holds per-session Minecraft world data used by movement and packet output.
 // Qx should be used for most GameState opteriation just like the *world.World in dragonfly
 type GameState struct {
-	clientData         login.ClientData
-    entityRuntimeID    uint64
-    blockMap           *blockmap.BlockMap
+	clientData      *login.ClientData
+    entityRuntimeID uint64
+    blockMap        *blockmap.BlockMap
+    player          *playerState
+	items			*itemstack.PlayerItemStack
+
     tickInputDataFlags protocol.Bitset
-	in       input.Inputs
-    player   *playerState
-    moveBuf  *moveBuf
+    in                 input.Inputs
+    moveBuf            *moveBuf
 
     queue  chan *queueTransition
     tick   uint
     closed chan struct{}
 
-	packets *packetBuffer
+    packets *pkbuf.PacketBuffer
 }
 
 func NewGameState(conn *minecraft.Conn) *GameState {
-	gs := &GameState{
-		entityRuntimeID: conn.GameData().EntityRuntimeID,
-		clientData:  conn.ClientData(),
-		blockMap:    blockmap.NewBlockMap(conn),
-		moveBuf:     newMoveBuf(conn),
-		queue:       make(chan *queueTransition, 512),
-		closed: 	 make(chan struct{}),
-		tick:        0,
-	}
-	pk := make(packetBuffer, 0, 10)
-	gs.packets = &pk
+	gs := &GameState{}
+	pks := make(pkbuf.PacketBuffer, 0, 10)
+	gs.packets = &pks
+	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
+	gs.blockMap = blockmap.NewBlockMap(conn, gs.packets)
+	gs.moveBuf = newMoveBuf(conn)
+	gs.queue = make(chan *queueTransition, 512)
+	gs.closed = make(chan struct{})
+	data := conn.ClientData()
+	gs.clientData = &data
 	gs.resetFlags()
 	gs.player = newPlayerState(conn, movements.NewMovement(gs.blockMap))
+	gs.items = itemstack.NewPlayerItemStack(conn, gs.packets)
 	gs.startRunningQueue()
 	return gs
 }
@@ -58,61 +59,44 @@ func (gs *GameState) Close() {
 	close(gs.closed)
 }
 
+func (gs *GameState) Tick() {
+	gs.tick++
+	gs.setInputFlagBlockBreakingDelayEnabled()
+	gs.blockMap.UpdateChunkCentre(gs.player.position)
+	gs.blockMap.RefreshMapWithRenderDistance()
+	gs.blockMap.RequestSubChunkInQuery()
+	gs.handleInput()
+	gs.moveTick()
+	gs.tickReset()
+}
+
+func (gs *GameState) handleInput(){
+	if gs.in.RightClick.Pressed{
+		mainHand, _ := gs.Inventory().HeldItem()
+		itemData := &protocol.UseItemTransactionData{
+			Position: gs.player.position,
+			TriggerType: protocol.TriggerTypePlayerInput,
+			HotBarSlot: int32(gs.Inventory().HeldSlot()),
+			ActionType: protocol.UseItemActionClickAir,
+			HeldItem: itemstack.InstanceFromItem(world.DefaultBlockRegistry, mainHand),
+		}
+		gs.packets.Append(&packet.InventoryTransaction{
+			TransactionData: itemData,
+		})
+	}
+}
+
+func (gs *GameState) tickReset(){
+	gs.resetFlags()
+	gs.in = gs.in.NextTickPresses()
+}
+
 func (gs *GameState) BlockMap() *blockmap.BlockMap {
 	return gs.blockMap
 }
 
 func (gs *GameState) EntityRunTimeId() uint64 {
 	return gs.entityRuntimeID
-}
-
-func (gs *GameState) Tick() {
-	gs.tick++
-	gs.packets.reset()
-	gs.setInputFlagBlockBreakingDelayEnabled()
-	gs.blockMap.UpdateChunkCentre(gs.player.position)
-	gs.blockMap.RefreshMapWithRenderDistance()
-
-	simInput := gs.in
-	out := gs.doMovement(simInput)
-
-	gs.setMoveFlags(out)
-	gs.setInputFlags(simInput)
-
-	gs.packets.append(gs.PlayerAuthInputWithState(simInput))
-
-	gs.in = simInput.NextTickPresses()
-	gs.tickReset()
-}
-
-func (gs *GameState) doMovement(input input.Inputs) *movements.OutMovement{
-	//now := time.Now()
-	in := gs.player.spiltInMovement(input)
-	out := gs.player.doMove(in)
-	gs.moveBuf.addTick(in, out)
-	//fmt.Printf("Movement on tick %d: {position: %v velocity: %v onGround: %v}\n", gs.GStick(), gs.player.Position.Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)}), gs.player.Velocity, gs.player.OnGround)
-	//fmt.Printf("Block pos based on pPos: %v\n", cube.PosFromVec3(utils.Mgl32Vec3Tomgl64Vec3(gs.player.Position)))
-	//fmt.Printf("Time used for tick %d: %0.3fms\n\n", gs.GStick(), time.Since(now).Seconds()*1000)
-	return out
-}
-
-func (gs *GameState) setMoveFlags(nowOut *movements.OutMovement){
-	flag := nowOut.Flag
-	if flag.HorizontalCollision{
-		gs.SetFlag(packet.InputFlagHorizontalCollision)
-	}
-	if flag.VerticalCollision{
-		gs.SetFlag(packet.InputFlagVerticalCollision)
-	}
-	if flag.StartedJumping{
-		gs.SetFlag(packet.InputFlagStartJumping)
-	}
-	if flag.WantDown{
-		gs.SetFlag(packet.InputFlagWantDown)
-	}
-	if flag.WantUp{
-		gs.SetFlag(packet.InputFlagWantUp)
-	}
 }
 
 func (gs *GameState) GStick() uint {
@@ -127,7 +111,10 @@ func (gs *GameState) Player() *playerState {
 	return gs.player
 }
 
-func (gs *GameState) tickReset(){
-	gs.resetFlags()
-	gs.in.ServerSpeedAdd = mgl32.Vec3{}
+func (gs *GameState) Inventory() *itemstack.PlayerItemStack{
+	return gs.items
+}
+
+func (gs *GameState) FlushPackets() iter.Seq[packet.Packet]{
+	return gs.packets.FlushPackets()
 }

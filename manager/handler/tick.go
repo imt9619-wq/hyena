@@ -10,11 +10,11 @@ func (c *Connection) tick() {
 	defer c.handler.OnAfterTick(c)
 	c.handler.OnBeforeTick(c)
 	<-c.state.Exec(c.gameStateTick)
+	c.Conn.Flush()
 }
 
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
-	c.requestSubChunkInQuery()
 	for pk := range c.state.FlushPackets(){
 		c.WritePacket(pk)
 	}

@@ -11,11 +11,12 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap/hblock"
 	"github.com/imt9619-wq/hyena/utils"
+	"github.com/imt9619-wq/hyena/utils/pkbuf"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-//var airRID, _ = chunk.StateToRuntimeID("minecraft:air", nil)
 var airRID uint32
 func init() {
 	world.DefaultBlockRegistry.Finalize()
@@ -30,11 +31,13 @@ type BlockMap struct {
 	chunkCentre world.ChunkPos
 	subChunkInQuery [3]map[protocol.ChunkPos]map[int32]struct{}
 	currentDim int32
+	packets    *pkbuf.PacketBuffer
 }
 
-func NewBlockMap(conn *minecraft.Conn) *BlockMap {
+func NewBlockMap(conn *minecraft.Conn, pks *pkbuf.PacketBuffer) *BlockMap {
 	bm := &BlockMap{
 		chunkRadius: 15,
+		packets: pks,
 	}
 	bm.chunkCentre = utils.Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
 	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, utils.RadiusToChunkCount(bm.chunkRadius))
@@ -111,8 +114,33 @@ func (b *BlockMap) Block(pos cube.Pos) world.Block {
 	return bl
 }
 
-func (b *BlockMap) SubChunkInQuery()  [3]map[protocol.ChunkPos]map[int32]struct{}{
-	return b.subChunkInQuery
+func (b *BlockMap) RequestSubChunkInQuery(){
+	for dim, query := range b.subChunkInQuery{
+		queryl := len(query)
+		if queryl == 0 {
+			continue
+		}
+		dimen, _ := world.DimensionByID(dim)
+		r := dimen.Range()
+		offsets := make([]protocol.SubChunkOffset, 0, r.Height()>>4)
+		var pos int32
+		for cpos, chunkSub := range query{
+			offsets = offsets[:0]
+			for subPos := range chunkSub {
+				pos = subPos
+				break
+			}
+			for subPos := range chunkSub {
+				offsets = append(offsets, [3]int8{0, int8(subPos - pos), 0})
+			}
+			b.packets.Append(&packet.SubChunkRequest{
+				Dimension: int32(dim),
+				Position:  protocol.SubChunkPos{cpos[0], pos, cpos[1]},
+				Offsets:   offsets,
+			})
+		}
+		
+	}
 }
 
 func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool) {

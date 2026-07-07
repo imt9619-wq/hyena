@@ -164,3 +164,34 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 		})
 	}
 }
+
+func (c *Connection) replyInventoryContent(pk *packet.InventoryContent){
+	ctx := event.C(c)
+	if c.handler.OnInventoryContent(ctx, pk); ctx.Cancelled() {
+		return
+	}
+	c.state.Exec(func(q *game.Qx) {
+		c.state.Inventory().SyncInventoryContent(pk)
+	})
+}
+
+func (c *Connection) replyMobEquipment(pk *packet.MobEquipment){
+	ctx := event.C(c)
+	if c.handler.OnMobEquipment(ctx, pk); ctx.Cancelled() {
+		return
+	}
+	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
+		return
+	}
+	c.state.Exec(func(q *game.Qx) {
+		c.state.Inventory().Equip(pk)
+	})
+}
+
+func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
+	ctx := event.C(c)
+	if c.handler.OnModalFormRequest(ctx, pk); ctx.Cancelled() {
+		return
+	}
+	
+}
