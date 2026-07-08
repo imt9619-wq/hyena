@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 func (c *Connection) tick() {
@@ -15,7 +16,10 @@ func (c *Connection) tick() {
 
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
-	for pk := range c.state.Packets(){
+	for pk := range c.state.FlushPackets(){
+		if _, ok := pk.(*packet.PlayerAuthInput); ok && c.onForm.Load(){
+			continue
+		}
 		c.WritePacket(pk)
 	}
 }

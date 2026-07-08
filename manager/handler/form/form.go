@@ -139,7 +139,6 @@ type Custom struct {
 	formId uint32
 	title  string
 	elems  []Element
-	resp   any
 }
 
 func (c *Custom) CustomElementWithName(name string) iter.Seq[CustomElement]{
@@ -159,7 +158,6 @@ func (c *Custom) CustomElementWithName(name string) iter.Seq[CustomElement]{
 			}
 		}
 	}
-	
 }
 
 func (c *Custom) CustomElementWithType(t CustomElement) iter.Seq[CustomElement]{

@@ -35,14 +35,18 @@ func (pb *PacketBuffer) Reset(){
 	pb.buf = (pb.buf)[:0]
 }
 
-func (pb *PacketBuffer) Packets() iter.Seq[packet.Packet]{
+func (pb *PacketBuffer) FlushPackets() iter.Seq[packet.Packet]{
 	return func(yield func(packet.Packet) bool) {
 		pb.mu.RLock()
 		defer pb.mu.RUnlock()
-		for _, pk := range pb.buf{
-			if !yield(pk){
+		if len(pb.buf) == 0{
+			return 
+		}
+		for n := len(pb.buf)-1; n >= 0; n--{
+			if !yield((pb.buf)[n]){
 				return 
 			}
+			pb.buf = pb.buf[:n]
 		}
 	}
 } 

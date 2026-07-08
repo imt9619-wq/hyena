@@ -2,6 +2,7 @@ package handler
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/imt9619-wq/hyena/game"
@@ -16,6 +17,7 @@ type Connection struct {
 	closeOnce *sync.Once
 	closed    chan struct{}
 	state     *game.GameState
+	onForm    *atomic.Bool
 }
 
 func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
@@ -24,6 +26,7 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		handler:   h,
 		closed:    make(chan struct{}),
 		closeOnce: &sync.Once{},
+		onForm: &atomic.Bool{},
 	}
 	c.state = game.NewGameState(conn)
 	c.startTicking()

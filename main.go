@@ -22,7 +22,7 @@ func main() {
 		// play.venitymc.com:19132
 		// 127.0.0.1:19134
 		// 127.0.0.1:19135
-		closed, err := acc.JoinServer("127.0.0.1:19135", pathfind.NewPathHandler())
+		closed, err := acc.JoinServer("play.venitymc.com:19132", pathfind.NewPathHandler())
 		if err != nil {
 			fmt.Println(err)
 			return	

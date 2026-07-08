@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/df-mc/dragonfly/server/event"
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
@@ -148,22 +150,30 @@ func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
 	if !ok{
 		return
 	}
-	cancelForm := func ()  {
-		c.WritePacket(&packet.ModalFormResponse{
+	cancelForm := func () *packet.ModalFormResponse{
+		return &packet.ModalFormResponse{
 			FormID: pk.FormID,
 			CancelReason: protocol.Option(uint8(packet.ModalFormCancelReasonUserClosed)),
-		})
+		}
 	}
+	delayWrite := func (pk packet.Packet){
+		go func ()  {
+			time.Sleep(500*time.Millisecond)
+			c.onForm.Store(false)
+			c.WritePacket(pk)
+		}()
+	}
+	c.onForm.Store(true)
 	if c.handler.OnForm(ctx, f); ctx.Cancelled(){
-		cancelForm()
+		delayWrite(cancelForm())
 		return
 	}
 	data := f.ResponseJson()
 	if data == nil{
-		cancelForm()
+		delayWrite(cancelForm())
 		return
 	}
-	c.WritePacket(&packet.ModalFormResponse{
+	delayWrite(&packet.ModalFormResponse{
 		FormID: pk.FormID,
 		ResponseData: protocol.Option(data),
 	})

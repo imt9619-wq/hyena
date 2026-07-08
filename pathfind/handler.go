@@ -28,6 +28,7 @@ func (h *Handler) OnForm(ctx *handler.Context, f form.Form){
 	if strings.ToLower(f.Title()) == "server selector"{
 		if f, ok := f.(*form.Menu); ok{
 			f.PressButtonByIndex(0)
+			fmt.Printf("Clicked button\n")
 		}
 	}
 	fmt.Println(f.Title())
@@ -42,8 +43,8 @@ func (h *Handler) OnBeforeTick(c *handler.Connection){
 	if c.GameState().GStick()%200 == 0{
 		c.StartJumping(true)
 	}
-	if c.GameState().GStick()%200 == 100{
-		c.GameState().Inventory().SetHoldSlot(2)
+	if c.GameState().GStick() == 100{
+		c.GameState().Inventory().SetHoldSlot(4)
 		c.GameState().Exec(func(q *game.Qx) {
 			c.GameState().Inputs().RightClick.Pressed = true
 			c.GameState().Inputs().RightClick.PressOnce = true

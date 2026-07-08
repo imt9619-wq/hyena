@@ -3,7 +3,7 @@ package game
 import (
 	"iter"
 
-	"github.com/df-mc/dragonfly/server/world"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/imt9619-wq/hyena/game/itemstack"
@@ -60,7 +60,6 @@ func (gs *GameState) Close() {
 
 func (gs *GameState) Tick() {
 	gs.tick++
-	gs.packets.Reset()
 	gs.setInputFlagBlockBreakingDelayEnabled()
 	gs.blockMap.UpdateChunkCentre(gs.player.position)
 	gs.blockMap.RefreshMapWithRenderDistance()
@@ -72,13 +71,13 @@ func (gs *GameState) Tick() {
 
 func (gs *GameState) handleInput(){
 	if gs.in.RightClick.Pressed{
-		mainHand, _ := gs.Inventory().HeldItem()
 		itemData := &protocol.UseItemTransactionData{
 			Position: gs.player.position,
 			TriggerType: protocol.TriggerTypePlayerInput,
 			HotBarSlot: int32(gs.Inventory().HeldSlot()),
 			ActionType: protocol.UseItemActionClickAir,
-			HeldItem: itemstack.InstanceFromItem(world.DefaultBlockRegistry, mainHand),
+			ClickedPosition: mgl32.Vec3{0.5, 0.5, 0.5},
+			HeldItem: gs.Inventory().SlotInstance(gs.Inventory().HeldSlot()),
 		}
 		gs.packets.Append(&packet.InventoryTransaction{
 			TransactionData: itemData,
@@ -115,8 +114,8 @@ func (gs *GameState) Inventory() *itemstack.PlayerItemStack{
 	return gs.items
 }
 
-func (gs *GameState) Packets() iter.Seq[packet.Packet]{
-	return gs.packets.Packets()
+func (gs *GameState) FlushPackets() iter.Seq[packet.Packet]{
+	return gs.packets.FlushPackets()
 }
 
 func (gs *GameState) PacketBuf() *pkbuf.PacketBuffer{

@@ -73,12 +73,11 @@ func (pi *PlayerItemStack) SetHoldSlot(slot int){
 		return
 	}
 	pi.heldSlot = slot
-	mainhand, _ := pi.HeldItem()
 	pi.packets.Append(&packet.MobEquipment{
 		EntityRuntimeID: pi.entityRuntimeID,
 		InventorySlot: byte(slot),
 		HotBarSlot: byte(slot),
-		NewItem: InstanceFromItem(world.DefaultBlockRegistry, mainhand),
+		NewItem: pi.SlotInstance(pi.heldSlot),
 	})
 }
 
@@ -91,6 +90,17 @@ func (pi *PlayerItemStack) decodeItemInstanceToInv(ct []protocol.ItemInstance, i
 	}
 }
 
+func (pi *PlayerItemStack) SlotInstance(slot int) protocol.ItemInstance{
+	// TODO
+	var ogInst protocol.ItemInstance
+	mainhand, _ := pi.HeldItem()
+	dfData := instanceFromItem(world.DefaultBlockRegistry, mainhand).Stack.NBTData
+	for key, data := range dfData{
+		ogInst.Stack.NBTData[key] = data
+	}
+	return ogInst
+}
+
 // noinspection ALL
 //
 //go:linkname stackToItem github.com/df-mc/dragonfly/server/session.stackToItem
@@ -98,5 +108,5 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack
 
 // noinspection ALL
 //
-//go:linkname InstanceFromItem github.com/df-mc/dragonfly/server/session.instanceFromItem
-func InstanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance
+//go:linkname instanceFromItem github.com/df-mc/dragonfly/server/session.instanceFromItem
+func instanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance
