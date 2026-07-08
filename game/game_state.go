@@ -38,8 +38,7 @@ type GameState struct {
 
 func NewGameState(conn *minecraft.Conn) *GameState {
 	gs := &GameState{}
-	pks := make(pkbuf.PacketBuffer, 0, 10)
-	gs.packets = &pks
+	gs.packets = pkbuf.NewPacketBuffer(10)
 	gs.entityRuntimeID = conn.GameData().EntityRuntimeID
 	gs.blockMap = blockmap.NewBlockMap(conn, gs.packets)
 	gs.moveBuf = newMoveBuf(conn)
@@ -61,6 +60,7 @@ func (gs *GameState) Close() {
 
 func (gs *GameState) Tick() {
 	gs.tick++
+	gs.packets.Reset()
 	gs.setInputFlagBlockBreakingDelayEnabled()
 	gs.blockMap.UpdateChunkCentre(gs.player.position)
 	gs.blockMap.RefreshMapWithRenderDistance()
@@ -115,6 +115,10 @@ func (gs *GameState) Inventory() *itemstack.PlayerItemStack{
 	return gs.items
 }
 
-func (gs *GameState) FlushPackets() iter.Seq[packet.Packet]{
-	return gs.packets.FlushPackets()
+func (gs *GameState) Packets() iter.Seq[packet.Packet]{
+	return gs.packets.Packets()
+}
+
+func (gs *GameState) PacketBuf() *pkbuf.PacketBuffer{
+	return gs.packets
 }

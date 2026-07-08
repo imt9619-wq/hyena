@@ -5,7 +5,9 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/movements"
+	"github.com/imt9619-wq/hyena/manager/handler/form"
 	"github.com/imt9619-wq/hyena/utils"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -20,10 +22,6 @@ func (c *Connection) NotifyJoin() {
 }
 
 func (c *Connection) replyNetworkStackLatency(pk *packet.NetworkStackLatency) {
-	ctx := event.C(c)
-	if c.handler.OnNetworkStackLatency(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if !pk.NeedsResponse {
 		return
 	}
@@ -34,10 +32,6 @@ func (c *Connection) replyLevelChunk(pk *packet.LevelChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
 	}
-	ctx := event.C(c)
-	if c.handler.OnLevelChunk(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().InsertLevelChunk(pk)
 	})
@@ -47,20 +41,12 @@ func (c *Connection) replySubChunk(pk *packet.SubChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
 	}
-	ctx := event.C(c)
-	if c.handler.OnSubChunk(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().InsertSubChunk(pk)
 	})
 }
 
 func (c *Connection) replyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
-	ctx := event.C(c)
-	if c.handler.OnNetworkChunkPublisherUpdate(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	posInMgl32 := utils.ProtocolPosToMgl32Vec3(pk.Position)
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().UpdateChunkRadius(int32(pk.Radius>>4))
@@ -69,20 +55,12 @@ func (c *Connection) replyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPub
 }
 
 func (c *Connection) replyChunkRadiusUpdated(pk *packet.ChunkRadiusUpdated) {
-	ctx := event.C(c)
-	if c.handler.OnChunkRadiusUpdated(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().UpdateChunkRadius(pk.ChunkRadius)
 	})
 }
 
 func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
-	ctx := event.C(c)
-	if c.handler.OnUpdateAttributes(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
@@ -99,10 +77,6 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 }
 
 func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
-	ctx := event.C(c)
-	if c.handler.OnSetActorMotion(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
@@ -115,20 +89,12 @@ func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
 }
 
 func (c *Connection) replyUpdateBlock(pk *packet.UpdateBlock) {
-	ctx := event.C(c)
-	if c.handler.OnUpdateBlock(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.BlockMap().SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
 	})
 }
 
 func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
-	ctx := event.C(c)
-	if c.handler.OnMovePlayer(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
@@ -149,10 +115,6 @@ func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
 }
 
 func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMovePrediction){
-	ctx := event.C(c)
-	if c.handler.OnCorrectPlayerMovePrediction(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if pk.PredictionType == packet.PredictionTypePlayer{
 		c.state.Exec(func(q *game.Qx) {
 			c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
@@ -166,20 +128,12 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 }
 
 func (c *Connection) replyInventoryContent(pk *packet.InventoryContent){
-	ctx := event.C(c)
-	if c.handler.OnInventoryContent(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	c.state.Exec(func(q *game.Qx) {
 		c.state.Inventory().SyncInventoryContent(pk)
 	})
 }
 
 func (c *Connection) replyMobEquipment(pk *packet.MobEquipment){
-	ctx := event.C(c)
-	if c.handler.OnMobEquipment(ctx, pk); ctx.Cancelled() {
-		return
-	}
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
@@ -190,8 +144,27 @@ func (c *Connection) replyMobEquipment(pk *packet.MobEquipment){
 
 func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
 	ctx := event.C(c)
-	if c.handler.OnModalFormRequest(ctx, pk); ctx.Cancelled() {
+	f, ok := form.UnmarshalForm(pk.FormID, pk.FormData)
+	if !ok{
 		return
 	}
-	
+	cancelForm := func ()  {
+		c.WritePacket(&packet.ModalFormResponse{
+			FormID: pk.FormID,
+			CancelReason: protocol.Option(uint8(packet.ModalFormCancelReasonUserClosed)),
+		})
+	}
+	if c.handler.OnForm(ctx, f); ctx.Cancelled(){
+		cancelForm()
+		return
+	}
+	data := f.ResponseJson()
+	if data == nil{
+		cancelForm()
+		return
+	}
+	c.WritePacket(&packet.ModalFormResponse{
+		FormID: pk.FormID,
+		ResponseData: protocol.Option(data),
+	})
 }

@@ -2,11 +2,14 @@ package pathfind
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/dbgshape"
+	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/manager/handler"
+	"github.com/imt9619-wq/hyena/manager/handler/form"
 	"github.com/imt9619-wq/hyena/utils"
 )
 
@@ -21,6 +24,15 @@ func NewPathHandler() *Handler{
 	}
 }
 
+func (h *Handler) OnForm(ctx *handler.Context, f form.Form){
+	if strings.ToLower(f.Title()) == "server selector"{
+		if f, ok := f.(*form.Menu); ok{
+			f.PressButtonByIndex(0)
+		}
+	}
+	fmt.Println(f.Title())
+}
+
 func (h *Handler) OnJoin(c *handler.Connection){
 	//fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 	c.SetYaw(-90)
@@ -29,6 +41,13 @@ func (h *Handler) OnJoin(c *handler.Connection){
 func (h *Handler) OnBeforeTick(c *handler.Connection){
 	if c.GameState().GStick()%200 == 0{
 		c.StartJumping(true)
+	}
+	if c.GameState().GStick()%200 == 100{
+		c.GameState().Inventory().SetHoldSlot(2)
+		c.GameState().Exec(func(q *game.Qx) {
+			c.GameState().Inputs().RightClick.Pressed = true
+			c.GameState().Inputs().RightClick.PressOnce = true
+		})
 	}
 }
 

@@ -15,7 +15,7 @@ func (c *Connection) tick() {
 
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
-	for pk := range c.state.FlushPackets(){
+	for pk := range c.state.Packets(){
 		c.WritePacket(pk)
 	}
 }

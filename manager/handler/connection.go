@@ -3,6 +3,7 @@ package handler
 import (
 	"sync"
 
+	"github.com/df-mc/dragonfly/server/event"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -50,6 +51,10 @@ func (c *Connection) Closed() chan struct{}{
 }
 
 func (c *Connection) HandlePacket(pk packet.Packet){
+	ctx := event.C(c)
+	if c.handler.OnPacket(ctx, pk); ctx.Cancelled() {
+		return
+	}
 	switch pk := pk.(type) {
 	case *packet.NetworkStackLatency:
 		c.replyNetworkStackLatency(pk)
@@ -77,7 +82,6 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 		c.replyMobEquipment(pk)
 	case *packet.ModalFormRequest:
 		c.replyModalFormRequest(pk)
-	default:
 	}
 }
 

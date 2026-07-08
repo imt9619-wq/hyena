@@ -69,15 +69,15 @@ func (pi *PlayerItemStack) Equip(pk *packet.MobEquipment){
 }
 
 func (pi *PlayerItemStack) SetHoldSlot(slot int){
-	if !(8 >= slot || 0 <= slot) || slot == pi.heldSlot{
+	if !(8 >= slot && 0 <= slot) || slot == pi.heldSlot{
 		return
 	}
 	pi.heldSlot = slot
 	mainhand, _ := pi.HeldItem()
 	pi.packets.Append(&packet.MobEquipment{
 		EntityRuntimeID: pi.entityRuntimeID,
-		InventorySlot: byte(pi.inv.Size()-1),
-		HotBarSlot: byte(pi.inv.Size()-1),
+		InventorySlot: byte(slot),
+		HotBarSlot: byte(slot),
 		NewItem: InstanceFromItem(world.DefaultBlockRegistry, mainhand),
 	})
 }
@@ -98,5 +98,5 @@ func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack
 
 // noinspection ALL
 //
-//go:linkname instanceFromItem github.com/df-mc/dragonfly/server/session.instanceFromItem
+//go:linkname InstanceFromItem github.com/df-mc/dragonfly/server/session.instanceFromItem
 func InstanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance
