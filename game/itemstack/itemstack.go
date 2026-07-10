@@ -1,10 +1,7 @@
 package itemstack
 
 import (
-	_ "unsafe"
-
 	"github.com/df-mc/dragonfly/server/item"
-	"github.com/df-mc/dragonfly/server/item/inventory"
 	"github.com/df-mc/dragonfly/server/world"
 	"github.com/imt9619-wq/hyena/utils/pkbuf"
 	"github.com/sandertv/gophertunnel/minecraft"
@@ -19,24 +16,25 @@ func init() {
 type PlayerItemStack struct {   
 	entityRuntimeID  uint64
 	heldSlot         int
-    inv, offHand, ui *inventory.Inventory
-    armour           *inventory.Armour
-	containersOpen   map[uint32]*inventory.Inventory
+    inv, offHand, ui *Inventory
+    armour           *Armour
+	containersOpen   map[uint32]*Inventory
 	packets          *pkbuf.PacketBuffer
 }
 
 func NewPlayerItemStack(conn *minecraft.Conn, pks *pkbuf.PacketBuffer) *PlayerItemStack{
 	pi := &PlayerItemStack{}
-	pi.inv = inventory.New(36, nil)
-	pi.offHand = inventory.New(1, nil)
-	pi.armour = inventory.NewArmour(nil)
-	pi.ui = inventory.New(54, nil)
+	pi.inv = NewInventory(36)
+	pi.offHand = NewInventory(1)
+	pi.armour = NewArmour()
+	pi.ui = NewInventory(54)
+	pi.containersOpen = make(map[uint32]*Inventory, 10)
 	pi.entityRuntimeID = conn.GameData().EntityRuntimeID
 	pi.packets = pks
 	return pi
 }
 
-func (pi *PlayerItemStack) HeldItem() (mainhand, offhand item.Stack){
+func (pi *PlayerItemStack) HeldItem() (mainhand, offhand Stack){
 	mainhand, _ = pi.inv.Item(pi.heldSlot)
 	offhand, _ = pi.offHand.Item(0) 
 	return 
@@ -47,24 +45,47 @@ func (pi *PlayerItemStack) HeldSlot() int{
 }
 
 func (pi *PlayerItemStack) SyncInventoryContent(pk *packet.InventoryContent){
-	switch pk.WindowID{
-	case protocol.WindowIDInventory:
-		pi.decodeItemInstanceToInv(pk.Content, pi.inv)
-	case protocol.WindowIDArmour:
-		pi.decodeItemInstanceToInv(pk.Content, pi.armour.Inventory())
-	case protocol.WindowIDUI:
-		pi.decodeItemInstanceToInv(pk.Content, pi.ui)
-	case protocol.WindowIDOffHand:
-		pi.decodeItemInstanceToInv(pk.Content, pi.offHand)
+	inv, ok := pi.inventoryByWindowId(pk.WindowID)
+	if !ok{
+		inv = NewInventory(len(pk.Content))
+		pi.containersOpen[pk.WindowID] = inv
 	}
+	pi.decodeItemInstanceToInv(pk.Content, inv)
+}
+
+func (pi *PlayerItemStack) inventoryByWindowId(windowId uint32) (*Inventory, bool){
+	switch windowId{
+	case protocol.WindowIDInventory:
+		return pi.inv, true
+	case protocol.WindowIDArmour:
+		return pi.armour.Inventory(), true
+	case protocol.WindowIDUI:
+		return pi.ui, true
+	case protocol.WindowIDOffHand:
+		return pi.offHand, true
+	default:
+		inv, ok := pi.containersOpen[windowId]
+		return inv, ok
+	}
+}
+
+func (pi *PlayerItemStack) SetItemOnInvSlot(windowId uint32, slot uint32, ist protocol.ItemInstance){
+	inv, ok := pi.inventoryByWindowId(windowId)
+	if !ok{
+		return
+	}
+	if slot > uint32(inv.Size()-1){
+		return
+	}
+	inv.SetItem(int(slot), NewStack(world.DefaultBlockRegistry, ist))
 }
 
 func (pi *PlayerItemStack) Equip(pk *packet.MobEquipment){
 	switch pk.WindowID{
 	case protocol.WindowIDInventory:
-		pi.inv.SetItem(int(pk.InventorySlot), stackToItem(world.DefaultBlockRegistry, pk.NewItem.Stack))
+		pi.inv.SetItem(int(pk.InventorySlot), NewStack(world.DefaultBlockRegistry, pk.NewItem))
 	case protocol.WindowIDOffHand:
-		pi.offHand.SetItem(int(pk.InventorySlot), stackToItem(world.DefaultBlockRegistry, pk.NewItem.Stack))
+		pi.offHand.SetItem(int(pk.InventorySlot), NewStack(world.DefaultBlockRegistry, pk.NewItem))
 	}
 }
 
@@ -81,32 +102,20 @@ func (pi *PlayerItemStack) SetHoldSlot(slot int){
 	})
 }
 
-func (pi *PlayerItemStack) decodeItemInstanceToInv(ct []protocol.ItemInstance, inv *inventory.Inventory){
+func (pi *PlayerItemStack) decodeItemInstanceToInv(ct []protocol.ItemInstance, inv *Inventory){
 	if len(ct) != inv.Size(){
 		return
 	}
 	for slot, ist := range ct{
-		inv.SetItem(slot, stackToItem(world.DefaultBlockRegistry, ist.Stack))
+		inv.SetItem(slot, NewStack(world.DefaultBlockRegistry, ist))
 	}
 }
 
 func (pi *PlayerItemStack) SlotInstance(slot int) protocol.ItemInstance{
-	// TODO
-	var ogInst protocol.ItemInstance
-	mainhand, _ := pi.HeldItem()
-	dfData := instanceFromItem(world.DefaultBlockRegistry, mainhand).Stack.NBTData
-	for key, data := range dfData{
-		ogInst.Stack.NBTData[key] = data
-	}
-	return ogInst
+	mainhand, _ := pi.inv.Item(slot)
+	return instanceFromStack(world.DefaultBlockRegistry, mainhand)
 }
 
-// noinspection ALL
-//
-//go:linkname stackToItem github.com/df-mc/dragonfly/server/session.stackToItem
-func stackToItem(br world.BlockRegistry, it protocol.ItemStack) item.Stack 
-
-// noinspection ALL
-//
-//go:linkname instanceFromItem github.com/df-mc/dragonfly/server/session.instanceFromItem
-func instanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance
+func InstanceFromItem(br world.BlockRegistry, it item.Stack) protocol.ItemInstance{
+	return instanceFromItem(br, it)
+}

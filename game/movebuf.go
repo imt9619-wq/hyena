@@ -1,9 +1,6 @@
 package game
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/sandertv/gophertunnel/minecraft"
 )
@@ -51,7 +48,7 @@ func (mb *moveBuf) outMoveWithTick(tick uint) (*move, bool){
 }
 
 func (gs *GameState) ReSimMoveAtTick(tick uint, modF func(*movements.InMovement)){
-	now := time.Now()
+	//now := time.Now()
 	startTick := tick + 1
 	mb := gs.moveBuf
 	out, ok := mb.outMoveWithTick(startTick)
@@ -76,6 +73,6 @@ func (gs *GameState) ReSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 			mb.buf[ind+1].simInMove = in
 		}
 	}
-	fmt.Printf("(%0.3fms)resim pos %v to %v(in tick: %v)\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, startTick)
+	//fmt.Printf("(%0.3fms)resim pos %v to %v(in tick: %v)\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, startTick)
 	gs.player.copyMovement(&in.AMovement)
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type PacketBuffer struct{
-	mu *sync.RWMutex
+	mu  *sync.RWMutex
 	buf []packet.Packet
 }
 
@@ -35,18 +35,21 @@ func (pb *PacketBuffer) Reset(){
 	pb.buf = (pb.buf)[:0]
 }
 
-func (pb *PacketBuffer) FlushPackets() iter.Seq[packet.Packet]{
+func (pb *PacketBuffer) FlushPackets() iter.Seq[packet.Packet] {
 	return func(yield func(packet.Packet) bool) {
-		pb.mu.RLock()
-		defer pb.mu.RUnlock()
-		if len(pb.buf) == 0{
-			return 
+		pb.mu.Lock()
+		defer pb.mu.Unlock()
+		if len(pb.buf) == 0 {
+			return
 		}
-		for n := len(pb.buf)-1; n >= 0; n--{
-			if !yield((pb.buf)[n]){
-				return 
+		for i, pk := range pb.buf {
+			if !yield(pk) {
+				clear(pb.buf[:i+1])
+				pb.buf = pb.buf[i+1:]
+				return
 			}
-			pb.buf = pb.buf[:n]
 		}
+		clear(pb.buf)
+		pb.buf = pb.buf[:0]
 	}
-} 
+}

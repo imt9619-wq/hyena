@@ -17,7 +17,7 @@ type Connection struct {
 	closeOnce *sync.Once
 	closed    chan struct{}
 	state     *game.GameState
-	onForm    *atomic.Bool
+	onUi      *atomic.Bool
 }
 
 func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
@@ -26,7 +26,7 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		handler:   h,
 		closed:    make(chan struct{}),
 		closeOnce: &sync.Once{},
-		onForm: &atomic.Bool{},
+		onUi: &atomic.Bool{},
 	}
 	c.state = game.NewGameState(conn)
 	c.startTicking()
@@ -85,6 +85,8 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 		c.replyMobEquipment(pk)
 	case *packet.ModalFormRequest:
 		c.replyModalFormRequest(pk)
+	case *packet.InventorySlot:
+		c.replyInventorySlot(pk)
 	}
 }
 

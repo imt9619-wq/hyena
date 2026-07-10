@@ -17,7 +17,7 @@ func (c *Connection) tick() {
 func (c *Connection) gameStateTick(q *game.Qx) {
 	c.state.Tick()
 	for pk := range c.state.FlushPackets(){
-		if _, ok := pk.(*packet.PlayerAuthInput); ok && c.onForm.Load(){
+		if _, ok := pk.(*packet.PlayerAuthInput); ok && c.onUi.Load(){
 			continue
 		}
 		c.WritePacket(pk)

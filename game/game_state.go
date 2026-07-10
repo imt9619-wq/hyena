@@ -74,6 +74,7 @@ func (gs *GameState) handleInput(){
 		itemData := &protocol.UseItemTransactionData{
 			Position: gs.player.position,
 			TriggerType: protocol.TriggerTypePlayerInput,
+			BlockFace: 255,
 			HotBarSlot: int32(gs.Inventory().HeldSlot()),
 			ActionType: protocol.UseItemActionClickAir,
 			ClickedPosition: mgl32.Vec3{0.5, 0.5, 0.5},
@@ -106,7 +107,7 @@ func (gs *GameState) Inputs() *input.Inputs{
 	return &gs.in
 }
 
-func (gs *GameState) Player() *playerState {
+func (gs *GameState) Player() *playerState{
 	return gs.player
 }
 

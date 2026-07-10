@@ -159,11 +159,11 @@ func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
 	delayWrite := func (pk packet.Packet){
 		go func ()  {
 			time.Sleep(500*time.Millisecond)
-			c.onForm.Store(false)
+			c.onUi.Store(false)
 			c.WritePacket(pk)
 		}()
 	}
-	c.onForm.Store(true)
+	c.onUi.Store(true)
 	if c.handler.OnForm(ctx, f); ctx.Cancelled(){
 		delayWrite(cancelForm())
 		return
@@ -176,5 +176,11 @@ func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
 	delayWrite(&packet.ModalFormResponse{
 		FormID: pk.FormID,
 		ResponseData: protocol.Option(data),
+	})
+}
+
+func (c *Connection) replyInventorySlot(pk *packet.InventorySlot){
+	c.state.Exec(func(q *game.Qx) {
+		c.state.Inventory().SetItemOnInvSlot(pk.WindowID, pk.Slot, pk.NewItem)
 	})
 }

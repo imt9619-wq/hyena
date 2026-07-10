@@ -225,6 +225,7 @@ type rawForm struct {
 	Title    string          `json:"title"`
 	Content  json.RawMessage `json:"content"`
 	Elements json.RawMessage `json:"elements"`
+	Buttons  json.RawMessage `json:"buttons"`
 	Button1  string          `json:"button1"`
 	Button2  string          `json:"button2"`
 }
@@ -244,8 +245,12 @@ func UnmarshalForm(id uint32, data []byte) (f Form, ok bool) {
 		if err != nil{
 			return
 		}
-		e, alr := unMarshalElement(rawForm.Elements)
-		if !alr{
+		rawElems := rawForm.Elements
+		if len(rawElems) == 0 {
+			rawElems = rawForm.Buttons
+		}
+		e, alr := unMarshalElement(rawElems)
+		if !alr {
 			return
 		}
 		ok = true

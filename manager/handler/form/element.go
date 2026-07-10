@@ -1,7 +1,9 @@
 // Element structs are copied from github.com/df-mc/server/player/form/element.go
 package form
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Element interface{
 	json.Marshaler
@@ -215,13 +217,6 @@ func unMarshalElement(data []byte) (e []Element, ok bool) {
 			return
 		}
 		switch rawElem.Type {
-		case "button":
-			var elem Button
-			err = json.Unmarshal(rawElemMgs, &elem)
-			if err != nil {
-				return 
-			}
-			elems = append(elems, &elem)
 		case "input":
 			var elem Input
 			err = json.Unmarshal(rawElemMgs, &elem)
@@ -279,7 +274,15 @@ func unMarshalElement(data []byte) (e []Element, ok bool) {
 		case "divider":
 			elems = append(elems, &Divider{})
 		default:
-			return
+			if rawElem.Type != "" {
+				return
+			}
+			var elem Button
+			err = json.Unmarshal(rawElemMgs, &elem)
+			if err != nil {
+				return 
+			}
+			elems = append(elems, &elem)
 		}
 	}
 	return elems, true
