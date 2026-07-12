@@ -8,7 +8,6 @@ import (
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/game/movements"
 	"github.com/imt9619-wq/hyena/manager/handler/form"
-	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
@@ -45,14 +44,6 @@ func (c *Connection) handleSubChunk(pk *packet.SubChunk) {
 	}
 	c.state.Exec(func(q *game.Qx) {
 		q.InsertSubChunk(pk)
-	})
-}
-
-func (c *Connection) handleNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
-	posInMgl32 := utils.ProtocolPosToMgl32Vec3(pk.Position)
-	c.state.Exec(func(q *game.Qx) {
-		q.UpdateChunkRadius(int32(pk.Radius>>4))
-		q.UpdateChunkCentre(posInMgl32)
 	})
 }
 
@@ -99,10 +90,10 @@ func (c *Connection) handleUpdateBlock(pk *packet.UpdateBlock) {
 func (c *Connection) handleUpdateSubChunkBlocks(pk *packet.UpdateSubChunkBlocks){
 	c.state.Exec(func(q *game.Qx) {
 		for _, bEntry := range pk.Blocks{
-			q.SetBlock(utils.ProtocolBlockPosAdd(pk.Position, bEntry.BlockPos), 0, bEntry.BlockRuntimeID)
+			q.SetBlock(bEntry.BlockPos, 0, bEntry.BlockRuntimeID)
 		}
 		for _, bEntry := range pk.Extra{
-			q.SetBlock(utils.ProtocolBlockPosAdd(pk.Position, bEntry.BlockPos), 1, bEntry.BlockRuntimeID)
+			q.SetBlock(bEntry.BlockPos, 1, bEntry.BlockRuntimeID)
 		}
 	})
 }
@@ -198,4 +189,12 @@ func (c *Connection) handleInventorySlot(pk *packet.InventorySlot){
 
 func (c *Connection) handlePlayerList(pk *packet.PlayerList){
 	c.entInWorld.handlePlayerList(pk)
+}
+
+func (c *Connection) handleAddPlayer(pk *packet.AddPlayer){
+	c.entInWorld.handleAddPlayer(pk)
+}
+
+func (c *Connection) handleNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
+	c.entInWorld.syncNetworkChunk(pk.Radius, pk.Position)
 }

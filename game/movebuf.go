@@ -53,9 +53,9 @@ func (gs *GameState) reSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 	mb := gs.moveBuf
 	out, ok := mb.outMoveWithTick(startTick)
 	if !ok{
-		in := gs.player.spiltInMovement(gs.in)
+		in := gs.player.SpiltInMovement(gs.in)
 		modF(in)
-		gs.player.copyMovement(&in.AMovement)
+		gs.player.CopyMovement(&in.AMovement)
 		gs.in = in.Input
 		return
 	}
@@ -64,7 +64,7 @@ func (gs *GameState) reSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 	mb.buf[startTick-mb.firstTickInBuf].simInMove = in
 	for currTick := startTick; currTick <= mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		out := gs.player.movement.SimMovements(mb.buf[ind].simInMove)
+		out := gs.player.Movement().SimMovements(mb.buf[ind].simInMove)
 		mb.buf[ind].simResult = out
 		in = &movements.InMovement{}
 		in.AMovement = out.AMovement
@@ -74,5 +74,5 @@ func (gs *GameState) reSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 		}
 	}
 	//fmt.Printf("(%0.3fms)resim pos %v to %v(in tick: %v)\n", time.Since(now).Seconds()*1000, gs.player.position, in.Position, startTick)
-	gs.player.copyMovement(&in.AMovement)
+	gs.player.CopyMovement(&in.AMovement)
 }

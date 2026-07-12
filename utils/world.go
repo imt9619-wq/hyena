@@ -22,9 +22,12 @@ const (
 	Epsilon                = float64(0.0001)
 )
 
-func ProtocolPosToMgl32Vec3(protocolPos protocol.BlockPos) mgl32.Vec3 {
-	posInMgl32 := mgl32.Vec3([]float32{float32(protocolPos[0]), float32(protocolPos[1]), float32(protocolPos[2])})
-	return posInMgl32
+func ProtocolPosToMgl32Vec3(pos protocol.BlockPos) mgl32.Vec3{
+	return mgl32.Vec3{float32(pos[0]), float32(pos[1]), float32(pos[2])}
+}
+
+func Mgl32Vec3ToProtocolPos(pos mgl32.Vec3) protocol.BlockPos{
+	return protocol.BlockPos{int32(math.Floor(float64(pos[0]))), int32(math.Floor(float64(pos[1]))), int32(math.Floor(float64(pos[2])))}
 }
 
 func Mgl32ToWorldChunkPos(pos mgl32.Vec3) world.ChunkPos {

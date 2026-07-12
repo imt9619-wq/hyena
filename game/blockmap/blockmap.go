@@ -2,6 +2,7 @@ package blockmap
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/df-mc/dragonfly/server/block"
 	_ "github.com/df-mc/dragonfly/server/block"
@@ -25,6 +26,7 @@ func init() {
 // BlockMap holds *chunk.Chunk values for chunks within render distance.
 // BlockMap is not safe for use by multiple goroutines.
 type BlockMap struct {
+	mu          *sync.RWMutex
 	chunkMap    map[world.ChunkPos]*chunk.Chunk
 	chunkRadius int32
 	chunkCentre world.ChunkPos
@@ -37,6 +39,7 @@ func NewBlockMap(conn *minecraft.Conn, pks utils.PacketBuffer) *BlockMap {
 	bm := &BlockMap{
 		chunkRadius: 15,
 		packets: pks,
+		mu: &sync.RWMutex{},
 	}
 	bm.chunkCentre = utils.Mgl32ToWorldChunkPos(conn.GameData().PlayerPosition)
 	bm.chunkMap = make(map[world.ChunkPos]*chunk.Chunk, utils.RadiusToChunkCount(bm.chunkRadius))
@@ -49,6 +52,8 @@ func NewBlockMap(conn *minecraft.Conn, pks utils.PacketBuffer) *BlockMap {
 }
 
 func (b *BlockMap) Dimension() world.Dimension{
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	dim, _ := world.DimensionByID(int(b.currentDim))
 	return dim
 }
@@ -58,6 +63,8 @@ func (b *BlockMap) Dimension() world.Dimension{
 // chunk(unloaded chunk), a levelchunk packet of that chunk should be
 // received to load back the chunk
 func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	chunkCentre := utils.Mgl32ToWorldChunkPos(pos)
 	if b.chunkCentre == chunkCentre {
 		return
@@ -66,6 +73,8 @@ func (b *BlockMap) UpdateChunkCentre(pos mgl32.Vec3) {
 }
 
 func (b *BlockMap) RefreshMapWithRenderDistance() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	for chunk := range b.chunkMap {
 		if !b.isRenderedChunk(chunk) {
 			delete(b.chunkMap, chunk)
@@ -85,6 +94,8 @@ func (b *BlockMap) RefreshMapWithRenderDistance() {
 }
 
 func (b *BlockMap) UpdateChunkRadius(r int32) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.chunkRadius = r
 }
 
@@ -96,6 +107,8 @@ func (b *BlockMap) insertChunk(pos world.ChunkPos, chunk *chunk.Chunk) {
 }
 
 func (b *BlockMap) SetBlock(pos protocol.BlockPos, layer uint8, block uint32) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	chunkPos := utils.ProtocolPosToWorldChunkPos(pos)
 	chunk, ok := b.chunkMap[chunkPos]
 	if !ok {
@@ -114,6 +127,8 @@ func (b *BlockMap) Block(pos cube.Pos) world.Block {
 }
 
 func (b *BlockMap) RequestSubChunkInQuery(){
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	for dim, query := range b.subChunkInQuery{
 		queryl := len(query)
 		if queryl == 0 {
@@ -143,6 +158,8 @@ func (b *BlockMap) RequestSubChunkInQuery(){
 }
 
 func (b *BlockMap) block(pos cube.Pos, layer uint8) (bl world.Block, exist bool) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	bl = nil
 	exist = false
 	if layer > 1 {

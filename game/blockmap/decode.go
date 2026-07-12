@@ -14,6 +14,8 @@ import (
 
 // we assume the clientCache is disenbled, if not, error will occur
 func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	center := pk.Position
 	dim, _ := world.DimensionByID(int(pk.Dimension))
 	r := dim.Range()
@@ -54,6 +56,8 @@ func (b *BlockMap) InsertSubChunk(pk *packet.SubChunk) {
 }
 
 func (b *BlockMap) InsertLevelChunk(pk *packet.LevelChunk) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if !b.isRenderedChunk(world.ChunkPos(pk.Position)) {
 		return
 	}

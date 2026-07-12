@@ -95,6 +95,8 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 		c.handlePlayerList(pk)
 	case *packet.UpdateSubChunkBlocks:
 		c.handleUpdateSubChunkBlocks(pk)
+	case *packet.AddPlayer:
+		c.handleAddPlayer(pk)
 	}
 }
 
@@ -118,4 +120,8 @@ func (c *Connection) ExcuteCommand(cmd string){
 		},
 	}
 	c.WritePacket(pk)
+}
+
+func (c *Connection) EntityInWorld() *EntInWorld{
+	return c.entInWorld
 }

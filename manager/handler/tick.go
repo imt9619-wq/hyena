@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/imt9619-wq/hyena/game"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -11,6 +12,7 @@ func (c *Connection) tick() {
 	defer c.handler.OnAfterTick(c)
 	c.handler.OnBeforeTick(c)
 	<-c.state.Exec(c.gameStateTick)
+	c.entInWorld.syncNetworkChunk(c.entInWorld.networkRadius, utils.Mgl32Vec3ToProtocolPos(c.state.Player().Position))
 	c.Conn.Flush()
 }
 

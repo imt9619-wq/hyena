@@ -20,7 +20,7 @@ type GameState struct {
 	clientData      *login.ClientData
     entityRuntimeID uint64
     blockMap        *blockmap.BlockMap
-    player          *playerState
+    player          *movements.PlayerState
 	items			*itemstack.PlayerItemStack
 
     tickInputDataFlags protocol.Bitset
@@ -45,7 +45,7 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	data := conn.ClientData()
 	gs.clientData = &data
 	gs.resetFlags()
-	gs.player = newPlayerState(conn, movements.NewMovement(gs.blockMap))
+	gs.player = movements.NewPlayerState(conn, movements.NewMovement(gs.blockMap))
 	gs.items = itemstack.NewPlayerItemStack(conn, gs.packets)
 	gs.startRunningQueue()
 	return gs
@@ -59,7 +59,7 @@ func (gs *GameState) Close() {
 func (gs *GameState) tick() {
 	gs.currTick++
 	gs.setInputFlagBlockBreakingDelayEnabled()
-	gs.blockMap.UpdateChunkCentre(gs.player.position)
+	gs.blockMap.UpdateChunkCentre(gs.player.Position)
 	gs.blockMap.RefreshMapWithRenderDistance()
 	gs.blockMap.RequestSubChunkInQuery()
 	gs.handleInput()
@@ -70,7 +70,7 @@ func (gs *GameState) tick() {
 func (gs *GameState) handleInput(){
 	if gs.in.RightClick.Pressed{
 		itemData := &protocol.UseItemTransactionData{
-			Position: gs.player.position,
+			Position: gs.player.Position,
 			TriggerType: protocol.TriggerTypePlayerInput,
 			BlockFace: 255,
 			HotBarSlot: int32(gs.items.HeldSlot()),
@@ -99,4 +99,12 @@ func (gs *GameState) GStick() uint {
 
 func (gs *GameState) PacketBuf() *pkbuf.PacketBuffer{
 	return gs.packets
+}
+
+func (gs *GameState) Player() *movements.PlayerState{
+	return gs.player
+}
+
+func (gs *GameState) BlockMap() *blockmap.BlockMap{
+	return gs.blockMap
 }

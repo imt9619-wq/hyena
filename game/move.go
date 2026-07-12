@@ -9,8 +9,8 @@ import (
 )
 
 func (gs *GameState) moveTick() {
-	in := gs.player.spiltInMovement(gs.in)
-	out := gs.player.doMove(in)
+	in := gs.player.SpiltInMovement(gs.in)
+	out := gs.player.DoMove(in)
 	gs.moveBuf.addTick(in, out)
 	gs.setMoveFlags(out)
 	gs.setInputFlags()
@@ -55,10 +55,10 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk.CameraOrientation = mgl32.Vec3{}
 	pk.Pitch, pk.InteractPitch = gs.in.Pitch, gs.in.Pitch
 	pk.Yaw, pk.InteractYaw, pk.HeadYaw = gs.in.Yaw, gs.in.Yaw, gs.in.Yaw
-	pk.Position = gs.player.position
+	pk.Position = gs.player.Position
 	out, ok := gs.moveBuf.outMoveWithTick(gs.currTick - 1)
 	if ok {
-		pk.Delta = gs.player.position.Sub(out.simResult.Position)
+		pk.Delta = gs.player.Position.Sub(out.simResult.Position)
 	}
 	return pk
 }
