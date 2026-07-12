@@ -22,7 +22,7 @@ func main() {
 		// as.venity.net:19132
 		// 127.0.0.1:19134
 		// 127.0.0.1:19135
-		closed, err := acc.JoinServer("as.venity.net:19132", pathfind.NewPathFindHandler())
+		closed, err := acc.JoinServer("as.venity.net:19132", pathfind.NewPathFindHandler("ruMEme"))
 		if err != nil {
 			fmt.Println(err)
 			return	

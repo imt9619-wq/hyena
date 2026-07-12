@@ -15,8 +15,10 @@ func (c *Connection) tick() {
 }
 
 func (c *Connection) gameStateTick(q *game.Qx) {
-	c.state.Tick()
-	for pk := range c.state.FlushPackets(){
+	c.handler.OnBeforeGameStateTick(c)
+	defer c.handler.OnAfterGameStateTick(c)
+	q.Tick()
+	for pk := range q.FlushPackets(){
 		if _, ok := pk.(*packet.PlayerAuthInput); ok && c.onUi.Load(){
 			continue
 		}
@@ -26,16 +28,13 @@ func (c *Connection) gameStateTick(q *game.Qx) {
 
 func (c *Connection) startTicking() {
 	ticker := time.NewTicker(50 * time.Millisecond)
-
-	go func() {
-		for {
-			select {
-			case <-c.closed:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				c.tick()
-			}
+	for {
+		select {
+		case <-c.closed:
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			c.tick()
 		}
-	}()
+	}
 }

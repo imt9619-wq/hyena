@@ -47,7 +47,7 @@ func (mb *moveBuf) outMoveWithTick(tick uint) (*move, bool){
 	return nil, false
 }
 
-func (gs *GameState) ReSimMoveAtTick(tick uint, modF func(*movements.InMovement)){
+func (gs *GameState) reSimMoveAtTick(tick uint, modF func(*movements.InMovement)){
 	//now := time.Now()
 	startTick := tick + 1
 	mb := gs.moveBuf

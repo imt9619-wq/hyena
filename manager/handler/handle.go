@@ -23,46 +23,46 @@ func (c *Connection) NotifyJoin() {
 	c.handler.OnJoin(c)
 }
 
-func (c *Connection) replyNetworkStackLatency(pk *packet.NetworkStackLatency) {
+func (c *Connection) handleNetworkStackLatency(pk *packet.NetworkStackLatency) {
 	if !pk.NeedsResponse {
 		return
 	}
 	c.requestNetworkStackLatency(pk)
 }
 
-func (c *Connection) replyLevelChunk(pk *packet.LevelChunk) {
+func (c *Connection) handleLevelChunk(pk *packet.LevelChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().InsertLevelChunk(pk)
+		q.InsertLevelChunk(pk)
 	})
 }
 
-func (c *Connection) replySubChunk(pk *packet.SubChunk) {
+func (c *Connection) handleSubChunk(pk *packet.SubChunk) {
 	if pk.CacheEnabled {
 		panic("ClientCache is Enabled.\n")
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().InsertSubChunk(pk)
+		q.InsertSubChunk(pk)
 	})
 }
 
-func (c *Connection) replyNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
+func (c *Connection) handleNetworkChunkPublisherUpdate(pk *packet.NetworkChunkPublisherUpdate) {
 	posInMgl32 := utils.ProtocolPosToMgl32Vec3(pk.Position)
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().UpdateChunkRadius(int32(pk.Radius>>4))
-		c.state.BlockMap().UpdateChunkCentre(posInMgl32)
+		q.UpdateChunkRadius(int32(pk.Radius>>4))
+		q.UpdateChunkCentre(posInMgl32)
 	})
 }
 
-func (c *Connection) replyChunkRadiusUpdated(pk *packet.ChunkRadiusUpdated) {
+func (c *Connection) handleChunkRadiusUpdated(pk *packet.ChunkRadiusUpdated) {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().UpdateChunkRadius(pk.ChunkRadius)
+		q.UpdateChunkRadius(pk.ChunkRadius)
 	})
 }
 
-func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
+func (c *Connection) handleUpdateAttributes(pk *packet.UpdateAttributes) {
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
@@ -70,7 +70,7 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 		switch an := attribute.Name; an {
 		case "minecraft:movement":
 			c.state.Exec(func(q *game.Qx) {
-				c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+				q.ResimMove(uint(pk.Tick), func(im *movements.InMovement) {
 					im.BaseSpeed = attribute.Value
 				})
 			})
@@ -78,48 +78,59 @@ func (c *Connection) replyUpdateAttributes(pk *packet.UpdateAttributes) {
 	}
 }
 
-func (c *Connection) replySetActorMotion(pk *packet.SetActorMotion) {
+func (c *Connection) handleSetActorMotion(pk *packet.SetActorMotion) {
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+		q.ResimMove(uint(pk.Tick), func(im *movements.InMovement) {
 			im.Velocity = pk.Velocity
 			im.Input.ServerSpeedAdd = mgl32.Vec3{}
 		})
 	})
 }
 
-func (c *Connection) replyUpdateBlock(pk *packet.UpdateBlock) {
+func (c *Connection) handleUpdateBlock(pk *packet.UpdateBlock) {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.BlockMap().SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
+		q.SetBlock(pk.Position, uint8(pk.Layer), pk.NewBlockRuntimeID)
 	})
 }
 
-func (c *Connection) replyMovePlayer(pk *packet.MovePlayer) {
+func (c *Connection) handleUpdateSubChunkBlocks(pk *packet.UpdateSubChunkBlocks){
+	c.state.Exec(func(q *game.Qx) {
+		for _, bEntry := range pk.Blocks{
+			q.SetBlock(utils.ProtocolBlockPosAdd(pk.Position, bEntry.BlockPos), 0, bEntry.BlockRuntimeID)
+		}
+		for _, bEntry := range pk.Extra{
+			q.SetBlock(utils.ProtocolBlockPosAdd(pk.Position, bEntry.BlockPos), 1, bEntry.BlockRuntimeID)
+		}
+	})
+}
+
+func (c *Connection) handleMovePlayer(pk *packet.MovePlayer) {
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
+		c.entInWorld.movePlayer(pk)
 		return
 	}
 
 	c.state.Exec(func(q *game.Qx) {
-		c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+		q.ResimMove(uint(pk.Tick), func(im *movements.InMovement) {
 			im.Position = pk.Position
 			im.OnGround = pk.OnGround
 			im.Input.Yaw = pk.Yaw
 			im.Input.Pitch = pk.Pitch
 		})
-		c.state.BlockMap().UpdateChunkCentre(pk.Position)
-		c.state.BlockMap().RefreshMapWithRenderDistance()
+		q.UpdateChunkCentre(pk.Position)
 		if pk.Mode == packet.MoveModeTeleport{
-			c.state.SetFlag(packet.InputFlagHandledTeleport)
+			q.SetInputFlag(packet.InputFlagHandledTeleport)
 		}
 	})
 }
 
-func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMovePrediction){
+func (c *Connection) handleCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMovePrediction){
 	if pk.PredictionType == packet.PredictionTypePlayer{
 		c.state.Exec(func(q *game.Qx) {
-			c.state.ReSimMoveAtTick(uint(pk.Tick), func(im *movements.InMovement) {
+			q.ResimMove(uint(pk.Tick), func(im *movements.InMovement) {
 				im.Position = pk.Position
 				im.OnGround = pk.OnGround
 				im.Input.Yaw = pk.Rotation[1]
@@ -129,22 +140,22 @@ func (c *Connection) replyCorrectPlayerMovePrediction(pk *packet.CorrectPlayerMo
 	}
 }
 
-func (c *Connection) replyInventoryContent(pk *packet.InventoryContent){
+func (c *Connection) handleInventoryContent(pk *packet.InventoryContent){
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inventory().SyncInventoryContent(pk)
+		q.SyncInventoryContent(pk)
 	})
 }
 
-func (c *Connection) replyMobEquipment(pk *packet.MobEquipment){
+func (c *Connection) handleMobEquipment(pk *packet.MobEquipment){
 	if c.state.EntityRunTimeId() != pk.EntityRuntimeID {
 		return
 	}
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inventory().Equip(pk)
+		q.Equip(pk)
 	})
 }
 
-func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
+func (c *Connection) handleModalFormRequest(pk *packet.ModalFormRequest){
 	ctx := event.C(c)
 	f, ok := form.UnmarshalForm(pk.FormID, pk.FormData)
 	if !ok{
@@ -179,8 +190,12 @@ func (c *Connection) replyModalFormRequest(pk *packet.ModalFormRequest){
 	})
 }
 
-func (c *Connection) replyInventorySlot(pk *packet.InventorySlot){
+func (c *Connection) handleInventorySlot(pk *packet.InventorySlot){
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inventory().SetItemOnInvSlot(pk.WindowID, pk.Slot, pk.NewItem)
+		q.SetItemOnInvSlot(pk.WindowID, pk.Slot, pk.NewItem)
 	})
+}
+
+func (c *Connection) handlePlayerList(pk *packet.PlayerList){
+	c.entInWorld.handlePlayerList(pk)
 }

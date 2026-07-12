@@ -2,56 +2,52 @@ package pathfind
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/dbgshape"
-	"github.com/imt9619-wq/hyena/game"
+	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/manager/handler"
-	"github.com/imt9619-wq/hyena/manager/handler/form"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
 type PathFindHandler struct {
 	handler.NopConnHandler
-	shape *dbgshape.ShapeCache
+    c          *handler.Connection
+    shape      *dbgshape.ShapeCache
+    world      *blockmap.BlockMap
+    packets    chan packet.Packet
+    callerName string
+	targetPos  mgl32.Vec3
 }
 
-func NewPathFindHandler() *PathFindHandler{
-	return &PathFindHandler{
+func NewPathFindHandler(callerName string) *PathFindHandler{
+	h := &PathFindHandler{
 		shape: dbgshape.NewShapeCache(),
+		packets: make(chan packet.Packet, 1024),
+		callerName: strings.ToLower(callerName),
 	}
-}
-
-func (h *PathFindHandler) OnForm(ctx *handler.Context, f form.Form){
-	clicked := false
-	clickIfTitle := func (title, button string) bool{
-		f, ok := f.(*form.Menu)
-		if !ok{
-			return false
-		}
-		if form.Resendable(f.Title(), title){
-			return f.PressButton(button)
-		}
-		return false
-	}
-	clicked = clicked || clickIfTitle("server selector", "lobby")
-	clicked = clicked || clickIfTitle("lobby", "lobby0")
-	if clicked{
-		fmt.Printf("Clicked button on %s\n", f.Title())
-	}
+	return h 
 }
 
 func (h *PathFindHandler) OnJoin(c *handler.Connection){
 	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
-	c.SetYaw(-90)
+	h.world = blockmap.NewBlockMap(c.Conn, utils.NopPacketBuffer{})
+	h.c = c
+	go h.startRunning()
 }
 
-func (h *PathFindHandler) OnBeforeTick(c *handler.Connection){
-	if c.GameState().GStick() == 100{
-		c.GameState().Inventory().SetHoldSlot(4)
-		c.GameState().Exec(func(q *game.Qx) {
-			c.GameState().Inputs().RightClick.Pressed = true
-			c.GameState().Inputs().RightClick.PressOnce = true
-		})
+func (h *PathFindHandler) startRunning() {
+	for {
+		select {
+		case <-h.c.Closed():
+			return
+		case pk := <-h.packets:
+			if ph, ok := packetToPacketHandler[pk.ID()]; ok{
+				ph.handle(h, pk)
+			}
+		}
 	}
 }
 
@@ -60,4 +56,8 @@ func (h *PathFindHandler) OnDisconnect(c *handler.Connection, reason string){
 	h.shape.Close()
 }
 
-func (h *PathFindHandler) OnPacket(ctx *handler.Context, pk packet.Packet){}
+func (h *PathFindHandler) OnPacket(ctx *handler.Context, pk packet.Packet){
+	if _, ok := packetToPacketHandler[pk.ID()]; ok{
+		h.packets <-pk
+	}
+}

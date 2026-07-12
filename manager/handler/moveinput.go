@@ -7,47 +7,61 @@ import (
 
 func (c *Connection) StartRunning(once bool) {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().W.Pressed = true
-		c.state.Inputs().Sprint.Pressed = true
-		c.state.Inputs().Sprint.PressOnce = once
+		q.SetInput(func(i *input.Inputs) {
+			i.W.Pressed = true
+			i.Sprint.Pressed = true
+			i.Sprint.PressOnce = once
+		})
 	})
 }
 
 func (c *Connection) StopRunning() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().W = input.KeyPress{}
-		c.state.Inputs().Sprint = input.KeyPress{}
+		q.SetInput(func(i *input.Inputs) {
+			i.W = input.KeyPress{}
+			i.Sprint = input.KeyPress{}
+		})
 	})
 }
 
 func (c *Connection) StartJumping(once bool) {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Space.Pressed = true
-		c.state.Inputs().Space.PressOnce = once
+		q.SetInput(func(i *input.Inputs) {
+			i.Space.Pressed = true
+			i.Space.PressOnce = once
+		})		
 	})
 }
 
 func (c *Connection) StopJumping() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Space = input.KeyPress{}
+		q.SetInput(func(i *input.Inputs) {
+			i.Space = input.KeyPress{}
+		})		
 	})
 }
 
 func (c *Connection) SetYaw(yaw float32){
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Yaw = yaw
+		q.SetInput(func(i *input.Inputs) {
+			i.Yaw = yaw
+		})
 	})
 }
 
 func (c *Connection) StartSneaking(once bool){
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Shift.Pressed = true
-		c.state.Inputs().Shift.PressOnce = once
+		q.SetInput(func(i *input.Inputs) {
+			i.Shift.Pressed = true
+			i.Shift.PressOnce = once
+		})
 	})
 }
 
 func (c *Connection) StopSneaking() {
 	c.state.Exec(func(q *game.Qx) {
-		c.state.Inputs().Shift = input.KeyPress{}
+		q.SetInput(func(i *input.Inputs) {
+			i.Shift = input.KeyPress{}
+		})
 	})
 }

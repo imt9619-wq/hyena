@@ -47,6 +47,10 @@ func ShiftBackFourBits(x int32) int32 {
 	return x >> 4
 }
 
+func ProtocolBlockPosAdd(pos1, pos2 protocol.BlockPos) protocol.BlockPos{
+	return protocol.BlockPos{pos1[0]+pos2[0], pos1[1]+pos2[1], pos1[2]+pos2[2]}
+}
+
 func SubChunkPosWithOffset(pos protocol.SubChunkPos, offset protocol.SubChunkOffset) protocol.SubChunkPos {
 	return protocol.SubChunkPos{pos[0] + int32(offset[0]), pos[1] + int32(offset[1]), pos[2] + int32(offset[2])}
 }

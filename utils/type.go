@@ -14,3 +14,6 @@ type BlockSourse interface {
 type PacketBuffer interface{
 	Append(packet.Packet)
 }
+
+type NopPacketBuffer struct{}
+func (NopPacketBuffer) Append(packet.Packet){}

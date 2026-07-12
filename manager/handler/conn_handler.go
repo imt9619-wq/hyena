@@ -13,12 +13,16 @@ type Handler interface {
 	OnAfterTick(*Connection)
 	OnPacket(*Context, packet.Packet)
 	OnForm(*Context, form.Form)
+	OnBeforeGameStateTick(*Connection)
+	OnAfterGameStateTick(*Connection)
 }
 
 type NopConnHandler struct{}
 
 var _ Handler = NopConnHandler{}
 
+func (h NopConnHandler) OnBeforeGameStateTick(*Connection){}
+func (h NopConnHandler)	OnAfterGameStateTick(*Connection){}
 func (h NopConnHandler) OnForm(*Context, form.Form){}
 func (h NopConnHandler) OnPacket(*Context, packet.Packet){}
 func (h NopConnHandler) OnDisconnect(*Connection, string){}

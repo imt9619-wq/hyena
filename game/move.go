@@ -20,19 +20,19 @@ func (gs *GameState) moveTick() {
 func (gs *GameState) setMoveFlags(nowOut *movements.OutMovement){
 	flag := nowOut.Flag
 	if flag.HorizontalCollision{
-		gs.SetFlag(packet.InputFlagHorizontalCollision)
+		gs.setflag(packet.InputFlagHorizontalCollision)
 	}
 	if flag.VerticalCollision{
-		gs.SetFlag(packet.InputFlagVerticalCollision)
+		gs.setflag(packet.InputFlagVerticalCollision)
 	}
 	if flag.StartedJumping{
-		gs.SetFlag(packet.InputFlagStartJumping)
+		gs.setflag(packet.InputFlagStartJumping)
 	}
 	if flag.WantDown{
-		gs.SetFlag(packet.InputFlagWantDown)
+		gs.setflag(packet.InputFlagWantDown)
 	}
 	if flag.WantUp{
-		gs.SetFlag(packet.InputFlagWantUp)
+		gs.setflag(packet.InputFlagWantUp)
 	}
 }
 
@@ -42,7 +42,7 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk := &packet.PlayerAuthInput{}
 	pk.InputData = gs.tickInputDataFlags
 	pk.RawMoveVector, pk.MoveVector = gs.RawAndMoveVector()
-	pk.Tick = uint64(gs.tick)
+	pk.Tick = uint64(gs.currTick)
 	pk.InputMode = uint32(gs.clientData.CurrentInputMode)
 	pk.PlayMode = packet.PlayModeNormal
 	pk.InteractionModel = packet.InteractionModelClassic
@@ -56,7 +56,7 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 	pk.Pitch, pk.InteractPitch = gs.in.Pitch, gs.in.Pitch
 	pk.Yaw, pk.InteractYaw, pk.HeadYaw = gs.in.Yaw, gs.in.Yaw, gs.in.Yaw
 	pk.Position = gs.player.position
-	out, ok := gs.moveBuf.outMoveWithTick(gs.tick - 1)
+	out, ok := gs.moveBuf.outMoveWithTick(gs.currTick - 1)
 	if ok {
 		pk.Delta = gs.player.position.Sub(out.simResult.Position)
 	}
@@ -65,48 +65,48 @@ func (gs *GameState) PlayerAuthInputWithState() *packet.PlayerAuthInput {
 
 func (gs *GameState) setInputFlags() {
 	nowIn := gs.in
-	in, ok := gs.moveBuf.outMoveWithTick(gs.tick - 1)
+	in, ok := gs.moveBuf.outMoveWithTick(gs.currTick - 1)
 	if nowIn.Space.Pressed {
-		gs.SetFlag(packet.InputFlagJumping)
-		gs.SetFlag(packet.InputFlagJumpCurrentRaw)
-		gs.SetFlag(packet.InputFlagJumpDown)
+		gs.setflag(packet.InputFlagJumping)
+		gs.setflag(packet.InputFlagJumpCurrentRaw)
+		gs.setflag(packet.InputFlagJumpDown)
 	}
 	if nowIn.Sprint.Pressed {
-		gs.SetFlag(packet.InputFlagSprinting)
-		gs.SetFlag(packet.InputFlagSprintDown)
+		gs.setflag(packet.InputFlagSprinting)
+		gs.setflag(packet.InputFlagSprintDown)
 	}
 	if nowIn.Shift.Pressed {
-		gs.SetFlag(packet.InputFlagSneaking)
-		gs.SetFlag(packet.InputFlagSneakDown)
-		gs.SetFlag(packet.InputFlagSneakCurrentRaw)
+		gs.setflag(packet.InputFlagSneaking)
+		gs.setflag(packet.InputFlagSneakDown)
+		gs.setflag(packet.InputFlagSneakCurrentRaw)
 	}
 	lastIn := input.Inputs{}
 	if ok {
 		lastIn = in.simInMove.Input
 	}
 	if !lastIn.Space.Pressed && nowIn.Space.Pressed {
-		gs.SetFlag(packet.InputFlagJumpPressedRaw)
+		gs.setflag(packet.InputFlagJumpPressedRaw)
 	}
 	if lastIn.Space.Pressed && !nowIn.Space.Pressed {
-		gs.SetFlag(packet.InputFlagJumpReleasedRaw)
+		gs.setflag(packet.InputFlagJumpReleasedRaw)
 	}
 	if !lastIn.Shift.Pressed && nowIn.Shift.Pressed {
-		gs.SetFlag(packet.InputFlagSneakPressedRaw)
-		gs.SetFlag(packet.InputFlagStartSneaking)
+		gs.setflag(packet.InputFlagSneakPressedRaw)
+		gs.setflag(packet.InputFlagStartSneaking)
 	}
 	if lastIn.Shift.Pressed && !nowIn.Shift.Pressed {
-		gs.SetFlag(packet.InputFlagStopSneaking)
-		gs.SetFlag(packet.InputFlagSneakReleasedRaw)
+		gs.setflag(packet.InputFlagStopSneaking)
+		gs.setflag(packet.InputFlagSneakReleasedRaw)
 	}
 	if !lastIn.Sprint.Pressed && nowIn.Sprint.Pressed {
-		gs.SetFlag(packet.InputFlagStartSprinting)
+		gs.setflag(packet.InputFlagStartSprinting)
 	}
 	if lastIn.Sprint.Pressed && !nowIn.Sprint.Pressed {
-		gs.SetFlag(packet.InputFlagStopSprinting)
+		gs.setflag(packet.InputFlagStopSprinting)
 	}
 }
 
-func (gs *GameState) SetFlag(flag int) {
+func (gs *GameState) setflag(flag int) {
 	gs.tickInputDataFlags.Set(flag)
 }
 
@@ -116,7 +116,7 @@ func (gs *GameState) resetFlags() {
 }
 
 func (gs *GameState) setInputFlagBlockBreakingDelayEnabled() {
-	gs.SetFlag(packet.InputFlagBlockBreakingDelayEnabled)
+	gs.setflag(packet.InputFlagBlockBreakingDelayEnabled)
 }
 
 func (gs *GameState) RawAndMoveVector() (raw mgl32.Vec2, move mgl32.Vec2) {

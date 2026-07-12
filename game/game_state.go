@@ -1,8 +1,6 @@
 package game
 
 import (
-	"iter"
-
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/input"
@@ -29,9 +27,9 @@ type GameState struct {
     in                 input.Inputs
     moveBuf            *moveBuf
 
-    queue  chan *queueTransition
-    tick   uint
-    closed chan struct{}
+    queue    chan *queueTransition
+    currTick uint
+    closed   chan struct{}
 
     packets *pkbuf.PacketBuffer
 }
@@ -58,8 +56,8 @@ func (gs *GameState) Close() {
 	close(gs.closed)
 }
 
-func (gs *GameState) Tick() {
-	gs.tick++
+func (gs *GameState) tick() {
+	gs.currTick++
 	gs.setInputFlagBlockBreakingDelayEnabled()
 	gs.blockMap.UpdateChunkCentre(gs.player.position)
 	gs.blockMap.RefreshMapWithRenderDistance()
@@ -75,10 +73,10 @@ func (gs *GameState) handleInput(){
 			Position: gs.player.position,
 			TriggerType: protocol.TriggerTypePlayerInput,
 			BlockFace: 255,
-			HotBarSlot: int32(gs.Inventory().HeldSlot()),
+			HotBarSlot: int32(gs.items.HeldSlot()),
 			ActionType: protocol.UseItemActionClickAir,
 			ClickedPosition: mgl32.Vec3{0.5, 0.5, 0.5},
-			HeldItem: gs.Inventory().SlotInstance(gs.Inventory().HeldSlot()),
+			HeldItem: gs.items.SlotInstance(gs.items.HeldSlot()),
 		}
 		gs.packets.Append(&packet.InventoryTransaction{
 			TransactionData: itemData,
@@ -91,32 +89,12 @@ func (gs *GameState) tickReset(){
 	gs.in = gs.in.NextTickPresses()
 }
 
-func (gs *GameState) BlockMap() *blockmap.BlockMap {
-	return gs.blockMap
-}
-
 func (gs *GameState) EntityRunTimeId() uint64 {
 	return gs.entityRuntimeID
 }
 
 func (gs *GameState) GStick() uint {
-	return gs.tick
-}
-
-func (gs *GameState) Inputs() *input.Inputs{
-	return &gs.in
-}
-
-func (gs *GameState) Player() *playerState{
-	return gs.player
-}
-
-func (gs *GameState) Inventory() *itemstack.PlayerItemStack{
-	return gs.items
-}
-
-func (gs *GameState) FlushPackets() iter.Seq[packet.Packet]{
-	return gs.packets.FlushPackets()
+	return gs.currTick
 }
 
 func (gs *GameState) PacketBuf() *pkbuf.PacketBuffer{

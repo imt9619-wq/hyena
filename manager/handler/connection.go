@@ -15,11 +15,12 @@ import (
 // Connection wraps a Minecraft protocol connection with game state and a user handler.
 type Connection struct {
 	*minecraft.Conn
-	handler   Handler
-	closeOnce *sync.Once
-	closed    chan struct{}
-	state     *game.GameState
-	onUi      *atomic.Bool
+    handler    Handler
+    closeOnce  *sync.Once
+    closed     chan struct{}
+    state      *game.GameState
+    onUi       *atomic.Bool
+    entInWorld *EntInWorld
 }
 
 func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
@@ -29,9 +30,10 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		closed:    make(chan struct{}),
 		closeOnce: &sync.Once{},
 		onUi: &atomic.Bool{},
+		entInWorld: newEntInWorld(conn),
 	}
 	c.state = game.NewGameState(conn)
-	c.startTicking()
+	go c.startTicking()
 	return c
 }
 
@@ -62,33 +64,37 @@ func (c *Connection) HandlePacket(pk packet.Packet){
 	}
 	switch pk := pk.(type) {
 	case *packet.NetworkStackLatency:
-		c.replyNetworkStackLatency(pk)
+		c.handleNetworkStackLatency(pk)
 	case *packet.LevelChunk:
-		c.replyLevelChunk(pk)
+		c.handleLevelChunk(pk)
 	case *packet.NetworkChunkPublisherUpdate:
-		c.replyNetworkChunkPublisherUpdate(pk)
+		c.handleNetworkChunkPublisherUpdate(pk)
 	case *packet.ChunkRadiusUpdated:
-		c.replyChunkRadiusUpdated(pk)
+		c.handleChunkRadiusUpdated(pk)
 	case *packet.UpdateAttributes:
-		c.replyUpdateAttributes(pk)
+		c.handleUpdateAttributes(pk)
 	case *packet.SetActorMotion:
-		c.replySetActorMotion(pk)
+		c.handleSetActorMotion(pk)
 	case *packet.UpdateBlock:
-		c.replyUpdateBlock(pk)
+		c.handleUpdateBlock(pk)
 	case *packet.SubChunk:
-		c.replySubChunk(pk)
+		c.handleSubChunk(pk)
 	case *packet.MovePlayer:
-		c.replyMovePlayer(pk)
+		c.handleMovePlayer(pk)
 	case *packet.CorrectPlayerMovePrediction:
-		c.replyCorrectPlayerMovePrediction(pk)
+		c.handleCorrectPlayerMovePrediction(pk)
 	case *packet.InventoryContent:
-		c.replyInventoryContent(pk)
+		c.handleInventoryContent(pk)
 	case *packet.MobEquipment:
-		c.replyMobEquipment(pk)
+		c.handleMobEquipment(pk)
 	case *packet.ModalFormRequest:
-		c.replyModalFormRequest(pk)
+		c.handleModalFormRequest(pk)
 	case *packet.InventorySlot:
-		c.replyInventorySlot(pk)
+		c.handleInventorySlot(pk)
+	case *packet.PlayerList:
+		c.handlePlayerList(pk)
+	case *packet.UpdateSubChunkBlocks:
+		c.handleUpdateSubChunkBlocks(pk)
 	}
 }
 
