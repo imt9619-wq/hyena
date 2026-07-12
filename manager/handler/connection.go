@@ -5,8 +5,10 @@ import (
 	"sync/atomic"
 
 	"github.com/df-mc/dragonfly/server/event"
+	"github.com/google/uuid"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/sandertv/gophertunnel/minecraft"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
@@ -99,4 +101,15 @@ func (c *Connection) requestNetworkStackLatency(pk *packet.NetworkStackLatency) 
 		Timestamp:     pk.Timestamp * 1000000,
 		NeedsResponse: true,
 	})
+}
+
+func (c *Connection) ExcuteCommand(cmd string){
+	pk := &packet.CommandRequest{
+		CommandLine: cmd,
+		CommandOrigin: protocol.CommandOrigin{
+			Origin: protocol.CommandOriginPlayer,
+			UUID: uuid.New(),
+		},
+	}
+	c.WritePacket(pk)
 }

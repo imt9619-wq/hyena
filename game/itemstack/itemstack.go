@@ -3,7 +3,7 @@ package itemstack
 import (
 	"github.com/df-mc/dragonfly/server/item"
 	"github.com/df-mc/dragonfly/server/world"
-	"github.com/imt9619-wq/hyena/utils/pkbuf"
+	"github.com/imt9619-wq/hyena/utils"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -18,18 +18,19 @@ type PlayerItemStack struct {
 	heldSlot         int
     inv, offHand, ui *Inventory
     armour           *Armour
-	containersOpen   map[uint32]*Inventory
-	packets          *pkbuf.PacketBuffer
+	containerId      int
+	containerInv     *Inventory
+	packets          utils.PacketBuffer
 }
 
-func NewPlayerItemStack(conn *minecraft.Conn, pks *pkbuf.PacketBuffer) *PlayerItemStack{
+func NewPlayerItemStack(conn *minecraft.Conn, pks utils.PacketBuffer) *PlayerItemStack{
 	pi := &PlayerItemStack{}
 	pi.inv = NewInventory(36)
 	pi.offHand = NewInventory(1)
 	pi.armour = NewArmour()
 	pi.ui = NewInventory(54)
-	pi.containersOpen = make(map[uint32]*Inventory, 10)
 	pi.entityRuntimeID = conn.GameData().EntityRuntimeID
+	pi.containerId = -1
 	pi.packets = pks
 	return pi
 }
@@ -48,7 +49,8 @@ func (pi *PlayerItemStack) SyncInventoryContent(pk *packet.InventoryContent){
 	inv, ok := pi.inventoryByWindowId(pk.WindowID)
 	if !ok{
 		inv = NewInventory(len(pk.Content))
-		pi.containersOpen[pk.WindowID] = inv
+		pi.containerId = int(pk.WindowID)
+		pi.containerInv = inv
 	}
 	pi.decodeItemInstanceToInv(pk.Content, inv)
 }
@@ -64,9 +66,16 @@ func (pi *PlayerItemStack) inventoryByWindowId(windowId uint32) (*Inventory, boo
 	case protocol.WindowIDOffHand:
 		return pi.offHand, true
 	default:
-		inv, ok := pi.containersOpen[windowId]
-		return inv, ok
+		if pi.containerId == int(windowId){
+			return pi.containerInv, true
+		}
 	}
+	return nil, false
+}
+
+func (pi *PlayerItemStack) CloseContainer(){
+	pi.containerId = -1
+	pi.containerInv = nil
 }
 
 func (pi *PlayerItemStack) SetItemOnInvSlot(windowId uint32, slot uint32, ist protocol.ItemInstance){

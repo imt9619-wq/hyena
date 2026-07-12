@@ -71,11 +71,6 @@ func LastFourBit(x int32) int32 {
 	return x & 0x0F
 }
 
-type BlockSourse interface{
-	world.BlockSource
-	BlockModel(cube.Pos, uint8) (world.BlockModel, bool)
-}
-
 func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
 	for _, blockBox := range SweptBBoxInBBox(pBBox, bs) {
 		if pBBox.IntersectsWith(blockBox) {

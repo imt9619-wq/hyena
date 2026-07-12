@@ -3,6 +3,7 @@ package form
 import (
 	"encoding/json"
 	"iter"
+	"strings"
 )
 
 type Form interface {
@@ -11,28 +12,28 @@ type Form interface {
 	Title() string
 }
 
-const(
-	FormCancel int = iota-1
+const (
+	FormCancel int = iota - 1
 	FormTrue
 	FormFalse
 )
 
 type Menu struct {
 	formId     uint32
-    title      string
-    body       string
-    elems      []Element
-    respButton int
+	title      string
+	body       string
+	elems      []Element
+	respButton int
 }
 
-func (m *Menu) PressButtonByIndex(ind int) bool{
-	if ind < 0{
+func (m *Menu) PressButtonByIndex(ind int) bool {
+	if ind < 0 {
 		return false
 	}
 	buttonInd := 0
-	for _, elem := range m.elems{
-		if _, ok := elem.(*Button); ok{
-			if ind == buttonInd{
+	for _, elem := range m.elems {
+		if _, ok := elem.(*Button); ok {
+			if ind == buttonInd {
 				m.respButton = buttonInd
 				return true
 			}
@@ -42,11 +43,11 @@ func (m *Menu) PressButtonByIndex(ind int) bool{
 	return false
 }
 
-func (m *Menu) PressButton(buttonName string) bool{
+func (m *Menu) PressButton(buttonName string) bool {
 	buttonInd := 0
-	for _, elem := range m.elems{
-		if button, ok := elem.(*Button); ok{
-			if button.Text == buttonName{
+	for _, elem := range m.elems {
+		if button, ok := elem.(*Button); ok {
+			if Resendable(button.Text, buttonName) {
 				m.respButton = buttonInd
 				return true
 			}
@@ -73,35 +74,35 @@ func (m *Menu) Elements() []Element {
 }
 
 func (m *Menu) ResponseJson() []byte {
-	if m.respButton == FormCancel{
+	if m.respButton == FormCancel {
 		return nil
 	}
-	data, _ := json.Marshal(m.respButton) 
+	data, _ := json.Marshal(m.respButton)
 	return data
 }
 
 type Modal struct {
 	formId           uint32
-    title            string
-    body             string
-    button1, button2 *Button
-    resp             int
+	title            string
+	body             string
+	button1, button2 *Button
+	resp             int
 }
 
-func (m *Modal) Press(button bool){
-	if button == false{
+func (m *Modal) Press(button bool) {
+	if button == false {
 		m.resp = FormFalse
-	}else{
+	} else {
 		m.resp = FormTrue
 	}
 }
 
-func (m *Modal) PressButton(buttName string) bool{
-	if m.button1.Text == buttName{
+func (m *Modal) PressButton(buttName string) bool {
+	if m.button1.Text == buttName {
 		m.resp = FormTrue
-	}else if m.button2.Text == buttName{
+	} else if m.button2.Text == buttName {
 		m.resp = FormFalse
-	}else{
+	} else {
 		return false
 	}
 	return true
@@ -125,10 +126,10 @@ func (m *Modal) Buttons() []*Button {
 
 func (m *Modal) ResponseJson() []byte {
 	resp := false
-	if m.resp == FormCancel{
+	if m.resp == FormCancel {
 		return nil
 	}
-	if m.resp == FormTrue{
+	if m.resp == FormTrue {
 		resp = true
 	}
 	data, _ := json.Marshal(resp)
@@ -141,67 +142,66 @@ type Custom struct {
 	elems  []Element
 }
 
-func (c *Custom) CustomElementWithName(name string) iter.Seq[CustomElement]{
+func (c *Custom) CustomElementWithName(name string) iter.Seq[CustomElement] {
 	return func(yield func(CustomElement) bool) {
-		for _, elem := range c.elems{
+		for _, elem := range c.elems {
 			_, ok := elem.(*Button)
-			if elem.ReadOnly() == true || ok{
+			if elem.ReadOnly() == true || ok {
 				continue
 			}
-			if cElem, ok := elem.(CustomElement); ok{
-				if cElem.Name() != name{
+			if cElem, ok := elem.(CustomElement); ok {
+				if !Resendable(cElem.Name(), name) {
 					continue
 				}
-				if !yield(cElem){
-					return 
+				if !yield(cElem) {
+					return
 				}
 			}
 		}
 	}
 }
 
-func (c *Custom) CustomElementWithType(t CustomElement) iter.Seq[CustomElement]{
+func (c *Custom) CustomElementWithType(t CustomElement) iter.Seq[CustomElement] {
 	return func(yield func(CustomElement) bool) {
-		for _, elem := range c.elems{
+		for _, elem := range c.elems {
 			_, ok := elem.(*Button)
-			if elem.ReadOnly() == true || ok{
+			if elem.ReadOnly() == true || ok {
 				continue
 			}
 			cElem, ok := elem.(CustomElement)
-			if !ok{
+			if !ok {
 				continue
 			}
-			switch t.(type){
+			switch t.(type) {
 			case *Input:
-				if _, ok := cElem.(*Input); !ok{
+				if _, ok := cElem.(*Input); !ok {
 					continue
 				}
 			case *Dropdown:
-				if _, ok := cElem.(*Dropdown); !ok{
+				if _, ok := cElem.(*Dropdown); !ok {
 					continue
 				}
 			case *Slider:
-				if _, ok := cElem.(*Slider); !ok{
+				if _, ok := cElem.(*Slider); !ok {
 					continue
 				}
 			case *Toggle:
-				if _, ok := cElem.(*Toggle); !ok{
+				if _, ok := cElem.(*Toggle); !ok {
 					continue
 				}
 			case *StepSlider:
-				if _, ok := cElem.(*StepSlider); !ok{
+				if _, ok := cElem.(*StepSlider); !ok {
 					continue
 				}
 			default:
 				continue
 			}
-			if !yield(cElem){
-				return 
+			if !yield(cElem) {
+				return
 			}
 		}
 	}
 }
-
 
 func (c *Custom) FormID() uint32 {
 	return c.formId
@@ -242,7 +242,7 @@ func UnmarshalForm(id uint32, data []byte) (f Form, ok bool) {
 	case "form":
 		var body string
 		err = json.Unmarshal(rawForm.Content, &body)
-		if err != nil{
+		if err != nil {
 			return
 		}
 		rawElems := rawForm.Elements
@@ -255,15 +255,15 @@ func UnmarshalForm(id uint32, data []byte) (f Form, ok bool) {
 		}
 		ok = true
 		f = &Menu{
-			formId: id,
-			title:  rawForm.Title,
-			body:   body,
-			elems:  e,
+			formId:     id,
+			title:      rawForm.Title,
+			body:       body,
+			elems:      e,
 			respButton: FormCancel,
 		}
 	case "custom_form":
 		e, alr := unMarshalElement(rawForm.Content)
-		if !alr{
+		if !alr {
 			return
 		}
 		ok = true
@@ -275,7 +275,7 @@ func UnmarshalForm(id uint32, data []byte) (f Form, ok bool) {
 	case "modal":
 		var body string
 		err = json.Unmarshal(rawForm.Content, &body)
-		if err != nil{
+		if err != nil {
 			return
 		}
 		ok = true
@@ -285,8 +285,31 @@ func UnmarshalForm(id uint32, data []byte) (f Form, ok bool) {
 			body:    body,
 			button1: &Button{Text: rawForm.Button1},
 			button2: &Button{Text: rawForm.Button2},
-			resp: FormCancel,
+			resp:    FormCancel,
 		}
 	}
-	return 
+	return
+}
+
+func Resendable(str, sub string) bool {
+	str = strings.ReplaceAll(strings.ToLower(str), " ", "")
+	sub = strings.ReplaceAll(strings.ToLower(sub), " ", "")
+	if len(sub) > len(str) {
+		return false
+	}
+
+	subRunes := []rune(sub)
+	currSubIndex := 0
+	if len(subRunes) == 0 {
+		return true
+	}
+	for _, c := range str {
+		if c == subRunes[currSubIndex] {
+			currSubIndex++
+		}
+		if currSubIndex == len(subRunes) {
+			return true
+		}
+	}
+	return false
 }

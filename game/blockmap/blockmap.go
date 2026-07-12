@@ -11,7 +11,6 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/game/blockmap/hblock"
 	"github.com/imt9619-wq/hyena/utils"
-	"github.com/imt9619-wq/hyena/utils/pkbuf"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -31,10 +30,10 @@ type BlockMap struct {
 	chunkCentre world.ChunkPos
 	subChunkInQuery [3]map[protocol.ChunkPos]map[int32]struct{}
 	currentDim int32
-	packets    *pkbuf.PacketBuffer
+	packets    utils.PacketBuffer
 }
 
-func NewBlockMap(conn *minecraft.Conn, pks *pkbuf.PacketBuffer) *BlockMap {
+func NewBlockMap(conn *minecraft.Conn, pks utils.PacketBuffer) *BlockMap {
 	bm := &BlockMap{
 		chunkRadius: 15,
 		packets: pks,

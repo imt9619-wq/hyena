@@ -2,55 +2,50 @@ package pathfind
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/go-gl/mathgl/mgl32"
 	"github.com/imt9619-wq/hyena/dbgshape"
 	"github.com/imt9619-wq/hyena/game"
 	"github.com/imt9619-wq/hyena/manager/handler"
 	"github.com/imt9619-wq/hyena/manager/handler/form"
-	"github.com/imt9619-wq/hyena/utils"
+	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-type Handler struct {
+type PathFindHandler struct {
 	handler.NopConnHandler
 	shape *dbgshape.ShapeCache
 }
 
-func NewPathHandler() *Handler{
-	return &Handler{
+func NewPathFindHandler() *PathFindHandler{
+	return &PathFindHandler{
 		shape: dbgshape.NewShapeCache(),
 	}
 }
 
-func (h *Handler) OnForm(ctx *handler.Context, f form.Form){
-	if f.Title() == "§z§x§z§rServer Selector"{
-		if f, ok := f.(*form.Menu); ok{
-			f.PressButtonByIndex(1)
-			fmt.Printf("Clicked button on %s\n", f.Title())
+func (h *PathFindHandler) OnForm(ctx *handler.Context, f form.Form){
+	clicked := false
+	clickIfTitle := func (title, button string) bool{
+		f, ok := f.(*form.Menu)
+		if !ok{
+			return false
 		}
-	}
-	if f.Title() == "Lobby"{
-		if f, ok := f.(*form.Menu); ok{
-			f.PressButtonByIndex(0)
-			fmt.Printf("Clicked button on %s\n", f.Title())
+		if form.Resendable(f.Title(), title){
+			return f.PressButton(button)
 		}
+		return false
 	}
-	if f.Title() == "SkyWars"{
-		if f, ok := f.(*form.Menu); ok{
-			f.PressButtonByIndex(0)
-			fmt.Printf("Clicked button on %s\n", f.Title())
-		}
+	clicked = clicked || clickIfTitle("server selector", "lobby")
+	clicked = clicked || clickIfTitle("lobby", "lobby0")
+	if clicked{
+		fmt.Printf("Clicked button on %s\n", f.Title())
 	}
-	fmt.Println(f.Title())
 }
 
-func (h *Handler) OnJoin(c *handler.Connection){
+func (h *PathFindHandler) OnJoin(c *handler.Connection){
 	fmt.Printf("%s has joined the server: %s\n", c.IdentityData().DisplayName, c.RemoteAddr())
 	c.SetYaw(-90)
 }
 
-func (h *Handler) OnBeforeTick(c *handler.Connection){
+func (h *PathFindHandler) OnBeforeTick(c *handler.Connection){
 	if c.GameState().GStick() == 100{
 		c.GameState().Inventory().SetHoldSlot(4)
 		c.GameState().Exec(func(q *game.Qx) {
@@ -60,26 +55,9 @@ func (h *Handler) OnBeforeTick(c *handler.Connection){
 	}
 }
 
-func (h *Handler) OnDisconnect(c *handler.Connection, reason string){
+func (h *PathFindHandler) OnDisconnect(c *handler.Connection, reason string){
 	fmt.Printf("%s disconnected: %s\n", c.IdentityData().DisplayName, reason)
 	h.shape.Close()
 }
 
-func (h *Handler) OnAfterTick(c *handler.Connection){
-	//h.writeShape(c)
-}
-
-func (h *Handler) writeShape(c *handler.Connection){
-	pPos := c.GameState().Player().Position().Sub(mgl32.Vec3{0, float32(utils.NetworkOffset)})
-	/*pBBox := utils.PlayerBBox(utils.Mgl32Vec3Tomgl64Vec3(pPos))
-	h.shape.AddDeadlineShape(c.Conn, dbgshape.AShape{
-		Shape: dbgshape.Box,
-		StartPoint: utils.Mgl64Vec3Tomgl32Vec3(pBBox.Min()),
-		EndPoint: utils.Mgl64Vec3Tomgl32Vec3(pBBox.Max()),
-	}, time.Millisecond*100)*/
-	h.shape.AddDeadlineShape(c.Conn, dbgshape.AShape{
-		Shape: dbgshape.Line,
-		StartPoint: pPos,
-		EndPoint: pPos.Add(c.GameState().Player().Velocity()),
-	}, time.Millisecond*100)
-}
+func (h *PathFindHandler) OnPacket(ctx *handler.Context, pk packet.Packet){}

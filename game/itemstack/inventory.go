@@ -7,6 +7,11 @@ import (
 	"github.com/df-mc/dragonfly/server/item/inventory"
 )
 
+type Container struct{
+	windowId uint32
+	inv *Inventory
+}
+
 type Inventory struct {
 	mu    *sync.RWMutex
 	slots []Stack
