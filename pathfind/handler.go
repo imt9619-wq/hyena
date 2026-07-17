@@ -48,7 +48,5 @@ func (h *PathFindHandler) OnDisconnect(c *handler.Connection, reason string){
 }
 
 func (h *PathFindHandler) OnAfterTick(c *handler.Connection){
-	h.executor.stateMu.Lock()
-	defer h.executor.stateMu.Unlock()
 	h.executor.syncState(c.GameState().Player().SplitAMovement())
 }

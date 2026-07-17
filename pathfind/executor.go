@@ -29,7 +29,7 @@ func (h *PathFindHandler) setPathRunExector(){
 		events: make(chan event, 1024),
 		c: h.c,
 		stateMu: &sync.RWMutex{},
-		state: movements.NewPlayerState(h.c.Conn, movements.NewMovement(h.world)),
+		state: movements.NewPlayerState(h.c.Conn, h.world),
 	}
 }
 
@@ -66,11 +66,14 @@ func (h *PathFindHandler) startPathFindRunner() {
 }
 
 func (e *pathRunExecutor) syncState(move *movements.AMovement){
+	e.stateMu.Lock()
+	before := e.state.Position
+	e.state.CopyMovement(move)
+	e.stateMu.Unlock()
 	e.newEvent(EventPlayerPosChanged, payLoadPlayerPosChanged{
-		before: e.state.Position,
+		before: before,
 		after: move.Position,
 	})
-	e.state.CopyMovement(move)
 }
 
 func (e *pathRunExecutor) pos() mgl32.Vec3{

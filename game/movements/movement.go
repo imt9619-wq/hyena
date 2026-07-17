@@ -49,20 +49,16 @@ type Movement struct {
     flag         MovementFlags
 }
 
-func NewMovement(world *blockmap.BlockMap) *Movement {
-	return &Movement{
-		world: world,
-		baseSpeed: DefaultBaseSpeed,
-	}
-}
-
-func (m *Movement) SimMovements(in *InMovement) *OutMovement{
+func SimMovementsInWorld(in *InMovement, world *blockmap.BlockMap) *OutMovement{
+	m := &Movement{world: world}
 	m.copyInMovement(in)
 	m.doMotions()
 	m.stopOnEdge()
 	m.simCollision()
 	m.setOnGround()
-	return m.splitOutMovement()
+	out := m.splitOutMovement()
+	m = nil
+	return out
 }
 
 func (m *Movement) stopOnEdge(){

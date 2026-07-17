@@ -35,6 +35,7 @@ func (s *Session) run() {
 
 	conn := s.connection
 	conn.NotifyJoin()
+	go conn.StartTicking()
 
 	for {
 		pk, err := conn.ReadPacket()

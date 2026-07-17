@@ -45,7 +45,7 @@ func NewGameState(conn *minecraft.Conn) *GameState {
 	data := conn.ClientData()
 	gs.clientData = &data
 	gs.resetFlags()
-	gs.player = movements.NewPlayerState(conn, movements.NewMovement(gs.blockMap))
+	gs.player = movements.NewPlayerState(conn, gs.blockMap)
 	gs.items = itemstack.NewPlayerItemStack(conn, gs.packets)
 	gs.startRunningQueue()
 	return gs

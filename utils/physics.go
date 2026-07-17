@@ -66,3 +66,54 @@ func FloorFloatBetween(a, b float64) iter.Seq[float64] {
 		}
 	}
 }
+
+// returns a Vec3 that is the smallest(with minimun len) is needed to apply to self to no longer intersect with nearby
+func MinVec3InBoundWithinBBox(self, nearby, bound cube.BBox, selfPos mgl64.Vec3) (vec3 mgl64.Vec3, in bool){
+	var dx, dy, dz float64 = 0, 0, 0
+	var xDir, yDir, zDir float64 = 1, 1, 1
+	in = true
+	dF := func (axis int, dv, dir *float64) bool{
+		if diff := self.Max()[axis] - nearby.Max()[axis]; diff >= 0 && diff < self.Max()[axis] - self.Min()[axis]{
+			*dv = diff
+		} 
+		if diff := nearby.Min()[axis] - self.Min()[axis]; 
+		diff >= 0 && diff < self.Max()[axis] - self.Min()[axis] && (diff < *dv || *dv == 0){
+			*dv = diff
+			*dir = -1
+		}
+		return *dv == 0
+	}
+	if dF(0, &dx, &xDir){
+		return
+	}
+	if dF(1, &dy, &yDir){
+		return
+	}
+	if dF(2, &dz, &zDir){
+		return
+	}
+	outOfBound := func (axis int, dv float64, dir *float64) bool{
+		if !(selfPos[axis] + dv < bound.Max()[axis] && bound.Min()[axis] <= selfPos[axis] + dv){
+			*dir = 0
+			return true
+		}
+		return false
+	}
+	if outOfBound(0, dx, &xDir) && outOfBound(0, dy, &yDir) && outOfBound(0, dz, &zDir){
+		return vec3, false
+	}
+	eliminate := func (aDir, bDir, da, db *float64){
+		if *aDir != 0 && *bDir != 0{
+			if *da < *db && *da > 0{
+				*db = 0
+			}else if *db < *da && *db > 0{
+				*da = 0
+			}
+		}
+	}
+	eliminate(&xDir, &yDir, &dx, &dy)
+	eliminate(&xDir, &zDir, &dx, &dz)
+	eliminate(&yDir, &zDir, &dy, &dz)
+	vec3 = mgl64.Vec3{dx*xDir, dy*yDir, dz*zDir}
+	return
+}

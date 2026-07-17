@@ -33,7 +33,6 @@ func NewConnection(conn *minecraft.Conn, h Handler) *Connection {
 		entInWorld: newEntInWorld(conn),
 	}
 	c.state = game.NewGameState(conn)
-	go c.startTicking()
 	return c
 }
 

@@ -64,7 +64,7 @@ func (gs *GameState) reSimMoveAtTick(tick uint, modF func(*movements.InMovement)
 	mb.buf[startTick-mb.firstTickInBuf].simInMove = in
 	for currTick := startTick; currTick <= mb.lastTickInBuf; currTick++{
 		ind := currTick-mb.firstTickInBuf
-		out := gs.player.Movement().SimMovements(mb.buf[ind].simInMove)
+		out := movements.SimMovementsInWorld(mb.buf[ind].simInMove, gs.blockMap)
 		mb.buf[ind].simResult = out
 		in = &movements.InMovement{}
 		in.AMovement = out.AMovement

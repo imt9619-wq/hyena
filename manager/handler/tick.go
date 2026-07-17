@@ -28,7 +28,7 @@ func (c *Connection) gameStateTick(q *game.Qx) {
 	}
 }
 
-func (c *Connection) startTicking() {
+func (c *Connection) StartTicking() {
 	ticker := time.NewTicker(50 * time.Millisecond)
 	for {
 		select {

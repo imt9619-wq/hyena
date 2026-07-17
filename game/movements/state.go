@@ -2,6 +2,7 @@ package movements
 
 import (
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/imt9619-wq/hyena/game/blockmap"
 	"github.com/imt9619-wq/hyena/game/input"
 	"github.com/sandertv/gophertunnel/minecraft"
 )
@@ -13,22 +14,22 @@ type PlayerState struct {
     BaseSpeed    float32
     JumpCooldown int
 
-    movement *Movement
+	world 		 *blockmap.BlockMap
 }
 
-func NewPlayerState(conn *minecraft.Conn, move *Movement) *PlayerState {
+func NewPlayerState(conn *minecraft.Conn, world *blockmap.BlockMap) *PlayerState {
 	ps := &PlayerState{
 		Position: conn.GameData().PlayerPosition,
 		Velocity: mgl32.Vec3{},
 		OnGround: false,
 		BaseSpeed: float32(DefaultBaseSpeed),
-		movement: move,
+		world: world,
 	}
 	return ps
 }
 
 func (ps *PlayerState) DoMove(in *InMovement) *OutMovement{
-	out := ps.movement.SimMovements(in)
+	out := SimMovementsInWorld(in, ps.world)
 	ps.CopyMovement(&out.AMovement)
 	return out
 }
@@ -56,8 +57,4 @@ func (ps *PlayerState) CopyMovement(out *AMovement){
 	ps.OnGround = out.OnGround
 	ps.BaseSpeed = out.BaseSpeed
 	ps.JumpCooldown = out.JumpCooldown
-}
-
-func (ps *PlayerState) Movement() *Movement{
-	return ps.movement
 }
