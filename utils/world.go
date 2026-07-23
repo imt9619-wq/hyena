@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"iter"
 	"math"
 
 	"github.com/df-mc/dragonfly/server/block/cube"
@@ -78,57 +77,6 @@ func LastFourBit(x int32) int32 {
 	return x & 0x0F
 }
 
-func BBoxIntersectsSolid(bs BlockSourse, pBBox cube.BBox) bool {
-	for _, blockBox := range SweptBBoxInBBox(pBBox, bs) {
-		if pBBox.IntersectsWith(blockBox) {
-			return true
-		}
-	}
-	return false
-}
-
-func SweptBBoxInBBox(bbox cube.BBox, bs BlockSourse) iter.Seq2[cube.Pos, cube.BBox]{
-	return func(yield func(cube.Pos, cube.BBox) bool) {
-		for pos := range blockPositionsInBBox(bbox) {
-			model, _ := bs.BlockModel(pos, 0)
-			if model == nil {
-				continue
-			}
-			for _, bbox := range BBoxes(model, pos, bs){
-				if !yield(pos, bbox){
-					return 
-				}
-			}
-			
-		}
-	}
-}
-
-func blockPositionsInBBox(bbox cube.BBox) iter.Seq[cube.Pos]{
-	min := bbox.Min()
-	max := bbox.Max()
-	
-	return func(yield func(cube.Pos) bool) {
-		for x := int(math.Floor(min[0])); x <= int(math.Floor(max[0])); x++ {
-			for y := int(math.Floor(min[1])); y <= int(math.Floor(max[1])); y++ {
-				for z := int(math.Floor(min[2])); z <= int(math.Floor(max[2])); z++ {
-					if !yield(cube.Pos{x, y, z}){
-						return 
-					}
-				}
-			}
-		}
-	}
-}
-
-func BBoxes(model world.BlockModel, pos cube.Pos, s world.BlockSource) []cube.BBox{
-	blockBoxes := model.BBox(pos, s)
-	for i, bbox := range blockBoxes{
-		blockBoxes[i] = bbox.Translate(pos.Vec3())
-	}
-	return blockBoxes
-}
-
 type AxisFace [3]cube.Face
 func DeltaAxisFace(deltas mgl64.Vec3) AxisFace{
 	a := AxisFace{cube.FaceWest, cube.FaceDown, cube.FaceNorth}
@@ -142,45 +90,6 @@ func DeltaAxisFace(deltas mgl64.Vec3) AxisFace{
 		a[2] = cube.FaceSouth
 	}
 	return a
-}
-
-func BlockInBBox(bbox cube.BBox, bs world.BlockSource) iter.Seq2[cube.Pos, world.Block]{
-	return func(yield func(cube.Pos, world.Block) bool) {
-		for blockPos := range blockPositionsInBBox(bbox){
-			if !yield(blockPos, bs.Block(blockPos)){
-				return 
-			}
-		}
-	}
-}
-
-func BBoxOnBBoxFaceWithThreshold(self cube.BBox, face cube.Face, threshold float64) cube.BBox{
-	min, max := self.Min(), self.Max()
-	switch face{
-	case cube.FaceUp:
-		min[1] = max[1]
-		max[1] += threshold
-	case cube.FaceDown:
-		max[1] = min[1]
-		min[1] -= threshold
-	case cube.FaceNorth:
-		max[2] = min[2]
-		min[2] -= threshold
-	case cube.FaceEast:
-		min[0] = max[0]
-		max[0] += threshold
-	case cube.FaceSouth:
-		min[2] = max[2]
-		max[2] += threshold
-	default:
-		max[0] = min[0]
-		min[0] -= threshold
-	}
-	return cube.Box(min[0], min[1], min[2], max[0], max[1], max[2])
-}
-
-func TinyBBoxOnBBoxFace(self cube.BBox, face cube.Face) cube.BBox{
-	return BBoxOnBBoxFaceWithThreshold(self, face, ProbeOffset)
 }
 
 func FaceOnDeltaAxis(delta mgl64.Vec3, axis int) cube.Face{
@@ -204,14 +113,4 @@ func FaceOnDeltaAxis(delta mgl64.Vec3, axis int) cube.Face{
 			return cube.FaceNorth
 		}
 	}
-}
-
-func Box(vec1, vec2 mgl64.Vec3) cube.BBox{
-	return cube.Box(vec1[0],
-					vec1[1],
-					vec1[2],
-					vec2[0],
-					vec2[1],
-					vec2[2],
-					)
 }
